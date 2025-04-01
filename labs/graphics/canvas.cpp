@@ -74,7 +74,7 @@ Canvas::Canvas(QWidget* parent) : QWidget(parent) {
     controller_ = std::make_unique<Controller>();
     SetMode(std::make_unique<LightMode>());
     QTimer::singleShot(0, this, [this]() {
-        controller_->UpdateBorder(contentsRect());
+        UpdateBorder(contentsRect());
     });
 }
 
@@ -185,9 +185,26 @@ void PolygonMode::mouseReleaseEvent(QMouseEvent* event, Canvas* canvas) {
     Q_UNUSED(canvas);
 }
 
+void Canvas::UpdateBorder(const QRect& rect) {
+    Polygon border_polygon;
+    border_polygon.AddVertex(QPointF(rect.left(), rect.top()));
+    border_polygon.AddVertex(QPointF(rect.right(), rect.top()));
+    border_polygon.AddVertex(QPointF(rect.right(), rect.bottom()));
+    border_polygon.AddVertex(QPointF(rect.left(), rect.bottom()));
+    border_polygon.AddVertex(QPointF(rect.left(), rect.top()));
+    
+    auto& polygons = controller_->GetPolygons();
+    
+    if (polygons.empty()) {
+        polygons.emplace_back(border_polygon);
+    }
+    else {
+        polygons.at(0) = border_polygon;
+    }
+    controller_->SetLightSource(rect.center());
+}
+
 void Canvas::resizeEvent(QResizeEvent* event) {
     QWidget::resizeEvent(event);
-    if (controller_) {
-        controller_->UpdateBorder(contentsRect());
-    }
+    UpdateBorder(contentsRect());
 }

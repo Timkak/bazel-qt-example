@@ -3,25 +3,11 @@
 #include "../geom/polygon.h"
 #include <algorithm>
 
-void Controller::UpdateBorder(const QRect& rect) {
-    Polygon border_polygon;
-    border_polygon.AddVertex(QPointF(rect.left(), rect.top()));
-    border_polygon.AddVertex(QPointF(rect.right(), rect.top()));
-    border_polygon.AddVertex(QPointF(rect.right(), rect.bottom()));
-    border_polygon.AddVertex(QPointF(rect.left(), rect.bottom()));
-    border_polygon.AddVertex(QPointF(rect.left(), rect.top()));
-    
-    if (polygons_.empty()) {
-        polygons_.emplace_back(border_polygon);
-    }
-    else {
-        polygons_.at(0) = border_polygon;
-    }
-
-    light_source_ = rect.center();
+const std::vector<Polygon>& Controller::GetPolygons() const {
+    return polygons_;
 }
 
-const std::vector<Polygon>& Controller::GetPolygons() const {
+std::vector<Polygon>& Controller::GetPolygons() {
     return polygons_;
 }
 

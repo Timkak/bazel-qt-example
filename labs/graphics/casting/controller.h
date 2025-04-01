@@ -12,6 +12,7 @@ class Controller {
 public:
     Controller() = default; 
     [[nodiscard]] const std::vector<Polygon>& GetPolygons() const;
+    [[nodiscard]] std::vector<Polygon>& GetPolygons();
     void AddPolygon(const Polygon& new_polygon);
     void AddVertexToLastPolygon(const QPointF& new_vertex);
     void UpdateLastPolygon(const QPointF& new_vertex);
@@ -29,8 +30,6 @@ public:
     void IntersectRays(std::vector<Ray>* rays) const;
     static void RemoveAdjacentRays(std::vector<Ray>* rays);
     [[nodiscard]] Polygon CreateLightArea() const;
-    
-    void UpdateBorder(const QRect& rect);
 private:
     std::vector<Polygon> polygons_;
     QPointF light_source_;

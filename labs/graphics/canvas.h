@@ -30,6 +30,7 @@ class Canvas : public QWidget {
     explicit Canvas(QWidget* parent);
     void SetMode(std::unique_ptr<CanvasMode> mode);
     void SetController(std::unique_ptr<Controller> controller);
+    void UpdateBorder(const QRect& rect);
     [[nodiscard]] Controller* GetController() const;
 
    private:
