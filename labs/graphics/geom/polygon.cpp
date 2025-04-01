@@ -4,10 +4,10 @@
 #include <optional>
 
 namespace {
-std::optional<QPoint> RaySegmentIntersection(
-    const QPoint& begin, const QPoint& end, const Ray& ray) {
-    QPoint v1 = end - begin;
-    QPoint v2 = ray.GetEnd() - ray.GetBegin();
+std::optional<QPointF> RaySegmentIntersection(
+    const QPointF& begin, const QPointF& end, const Ray& ray) {
+    QPointF v1 = end - begin;
+    QPointF v2 = ray.GetEnd() - ray.GetBegin();
     if (misc::IsCollinear(v1, v2)) {
         return std::nullopt;
     }
@@ -28,38 +28,38 @@ std::optional<QPoint> RaySegmentIntersection(
         return std::nullopt;
     }
     
-    QPoint intersection = ray.GetBegin() + t1 * (ray.GetEnd() - ray.GetBegin());
+    QPointF intersection = ray.GetBegin() + t1 * (ray.GetEnd() - ray.GetBegin());
     return intersection;
 }
 }  // namespace
 
-Polygon::Polygon(std::vector<QPoint>& vertices) : vertices_(vertices) {
+Polygon::Polygon(std::vector<QPointF>& vertices) : vertices_(vertices) {
 }
 
-std::vector<QPoint> Polygon::GetVertices() const {
+std::vector<QPointF> Polygon::GetVertices() const {
     return vertices_;
 }
 
-void Polygon::AddVertex(const QPoint& vertex) {
+void Polygon::AddVertex(const QPointF& vertex) {
     vertices_.push_back(vertex);
 }
 
-void Polygon::UpdateLastVertex(const QPoint& new_vertex) {
+void Polygon::UpdateLastVertex(const QPointF& new_vertex) {
     if (!vertices_.empty()) {
         vertices_.back() = new_vertex;
     }
 }
 
-std::optional<QPoint> Polygon::IntersectRay(const Ray& ray) const {
+std::optional<QPointF> Polygon::IntersectRay(const Ray& ray) const {
     if (vertices_.size() < 2) {
         return std::nullopt;
     }
     double min_distance = std::numeric_limits<double>::max();
-    std::optional<QPoint> closest_intersection = std::nullopt;
+    std::optional<QPointF> closest_intersection = std::nullopt;
     for (size_t i = 0; i < vertices_.size() - 1; ++i) {
-        const QPoint& begin = vertices_[i];
-        const QPoint& end = vertices_[i + 1];
-        std::optional<QPoint> intersection = RaySegmentIntersection(begin, end, ray);
+        const QPointF& begin = vertices_[i];
+        const QPointF& end = vertices_[i + 1];
+        std::optional<QPointF> intersection = RaySegmentIntersection(begin, end, ray);
         if (intersection) {
             double distance = misc::Length(ray.GetBegin() - *intersection);
             if (distance < min_distance) {

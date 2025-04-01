@@ -4,18 +4,28 @@
 
 #include <QMouseEvent>
 #include <QPainterPath>
+#include <QPen>
+#include <QTimer>
 #include <memory>
 
 namespace {
     void DrawLightArea(QPainter& painter, Controller* controller) {
-        painter.setPen(QPen(Qt::gray, 1, Qt::DashLine));
+        QPainterPath path;
         const auto& light_position = controller->GetLightSource();
         const auto& rays = controller->CreateLightArea();
+        const auto& vertices = rays.GetVertices();
 
-        for (const auto& vertex : rays.GetVertices()) {
-            painter.drawLine(light_position, vertex);
+        if (!vertices.empty()) {
+            path.moveTo(light_position);
+            for (const auto& vertex : vertices) {
+                path.lineTo(vertex);
+            }
+            path.closeSubpath();
+            
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(QColor(0, 255, 255, 80));
+            painter.drawPath(path);
         }
-
     }
 
     void DrawPolygons(QPainter& painter, Controller* controller) {
@@ -34,7 +44,7 @@ namespace {
             painter.drawLine(vertices.back(), vertices.front());
         }
 
-        if (!polygons.empty()) {
+        if (!controller->IsComplete() && !polygons.empty()) {
             const auto& last_polygon = polygons.back();
             if (!last_polygon.GetVertices().empty()) {
                 const auto& vertices = last_polygon.GetVertices();
@@ -56,10 +66,11 @@ namespace {
 Canvas::Canvas(QWidget* parent) : QWidget(parent) {
     setBackgroundRole(QPalette::Base);
     setAutoFillBackground(true);
-    auto new_mode = std::make_unique<LightMode>();
-    auto new_controller = std::make_unique<Controller>();
-    SetMode(std::move(new_mode));
-    SetController(std::move(new_controller));
+    controller_ = std::make_unique<Controller>();
+    SetMode(std::make_unique<LightMode>());
+    QTimer::singleShot(0, this, [this]() {
+        controller_->UpdateBorder(contentsRect());
+    });
 }
 
 void Canvas::SetMode(std::unique_ptr<CanvasMode> mode) {
@@ -98,7 +109,7 @@ void Canvas::paintEvent(QPaintEvent* event) {
     painter.setRenderHints(QPainter::Antialiasing);
     painter.setRenderHints(QPainter::TextAntialiasing);
     painter.setRenderHints(QPainter::SmoothPixmapTransform);
-    painter.fillRect(rect(), Qt::white);
+
     DrawPolygons(painter, controller_.get());
     DrawLights(painter, controller_.get());
     DrawLightArea(painter, controller_.get());
@@ -134,16 +145,18 @@ void PolygonMode::mousePressEvent(QMouseEvent* event, Canvas* canvas) {
     const auto& polygons = controller->GetPolygons();
     switch (event->button()) {
         case Qt::LeftButton:
-            if (polygons.empty()) {
+            if (controller->IsComplete()) {
                 controller->AddPolygon(Polygon());
+                controller->SetComplete(false);
             }
             controller->AddVertexToLastPolygon(event->pos());
             break;
         case Qt::RightButton:
-            if (polygons.empty()) {
+            if (polygons.empty() || polygons.back().GetVertices().empty()) {
                 return;
             }
-            controller->AddPolygon(Polygon());
+            controller->AddVertexToLastPolygon(polygons.back().GetVertices().front());
+            controller->SetComplete(true);
             break;
         default:
             return;
@@ -165,4 +178,11 @@ void PolygonMode::mouseMoveEvent(QMouseEvent* event, Canvas* canvas) {
 void PolygonMode::mouseReleaseEvent(QMouseEvent* event, Canvas* canvas) {
     Q_UNUSED(event);
     Q_UNUSED(canvas);
+}
+
+void Canvas::resizeEvent(QResizeEvent* event) {
+    QWidget::resizeEvent(event);
+    if (controller_) {
+        controller_->UpdateBorder(contentsRect());
+    }
 }

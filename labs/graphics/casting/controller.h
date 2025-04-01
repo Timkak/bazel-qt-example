@@ -3,29 +3,39 @@
 
 #include "../geom/polygon.h"
 
-#include <QPoint>
+#include <QPointF>
+#include <QWidget>
 
 #include <vector>
 
 class Controller {
 public:
-    Controller() = default;
+    Controller() = default; 
     [[nodiscard]] const std::vector<Polygon>& GetPolygons() const;
     void AddPolygon(const Polygon& new_polygon);
-    void AddVertexToLastPolygon(const QPoint& new_vertex);
-    void UpdateLastPolygon(const QPoint& new_vertex);
-    [[nodiscard]] QPoint GetLightSource() const;
-    void SetLightSource(const QPoint& light_source);
+    void AddVertexToLastPolygon(const QPointF& new_vertex);
+    void UpdateLastPolygon(const QPointF& new_vertex);
+
+    [[nodiscard]] QPointF GetLightSource() const;
+    void SetLightSource(const QPointF& light_source);
+
     [[nodiscard]] bool IsDragging() const;
     void SetDragging(bool dragging);
+
+    [[nodiscard]] bool IsComplete() const;
+    void SetComplete(bool complete);
+
     [[nodiscard]] std::vector<Ray> CastRays() const;
     void IntersectRays(std::vector<Ray>* rays) const;
     static void RemoveAdjacentRays(std::vector<Ray>* rays);
     [[nodiscard]] Polygon CreateLightArea() const;
+    
+    void UpdateBorder(const QRect& rect);
 private:
     std::vector<Polygon> polygons_;
-    QPoint light_source_;
+    QPointF light_source_;
     bool is_dragging_ = false;
+    bool is_complete_ = true;
 };
 
 #endif

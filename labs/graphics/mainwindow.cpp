@@ -6,9 +6,10 @@
 #include <QVBoxLayout>
 
 MainWindow::MainWindow() { // NOLINT
-    SetupIU();
     resize(600, 500);
+    SetupIU();
 }
+
 
 void MainWindow::SetupIU() {
     // WIDGETS

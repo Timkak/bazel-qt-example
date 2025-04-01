@@ -24,6 +24,7 @@ class Canvas : public QWidget {
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
 
    public:
     explicit Canvas(QWidget* parent);

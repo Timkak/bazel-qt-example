@@ -1,16 +1,16 @@
 #ifndef MISC_H
 #define MISC_H
 
-#include <QPoint>
+#include <QPointF>
 
 namespace misc {
     constexpr double kEPS = 1e-9;
-    double DotProduct(const QPoint& v1, const QPoint& v2);
-    double Length(const QPoint& p1, const QPoint& p2);
-    double Length(const QPoint& v1);
-    double CrossProductValue(const QPoint& v1, const QPoint& v2);    
-    double Angle(const QPoint& v1);
-    bool IsCollinear(const QPoint& v1, const QPoint& v2);
+    double DotProduct(const QPointF& v1, const QPointF& v2);
+    double Length(const QPointF& p1, const QPointF& p2);
+    double Length(const QPointF& v1);
+    double CrossProductValue(const QPointF& v1, const QPointF& v2);    
+    double Angle(const QPointF& v1);
+    bool IsCollinear(const QPointF& v1, const QPointF& v2);
 } // namespace misc
 
 #endif

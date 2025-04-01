@@ -1,21 +1,21 @@
 #ifndef RAY_H
 #define RAY_H
 
-#include <QPoint>
+#include <QPointF>
 
 class Ray {
 public:
-    Ray(const QPoint& begin, const QPoint& end, double angle);
-    [[nodiscard]] QPoint GetBegin() const;
-    [[nodiscard]] QPoint GetEnd() const;
+    Ray(const QPointF& begin, const QPointF& end, double angle);
+    [[nodiscard]] QPointF GetBegin() const;
+    [[nodiscard]] QPointF GetEnd() const;
     [[nodiscard]] double GetAngle() const;
-    void SetBegin(const QPoint& begin);
-    void SetEnd(const QPoint& end);
+    void SetBegin(const QPointF& begin);
+    void SetEnd(const QPointF& end);
     void SetAngle(double angle);
     [[nodiscard]] Ray Rotate(double angle) const;
 private: 
-    QPoint begin_;
-    QPoint end_;
+    QPointF begin_;
+    QPointF end_;
     double angle_;
 };
 #endif
