@@ -10,6 +10,7 @@
 
 class Polygon {
 public:
+    Polygon() = default;
     explicit Polygon(std::vector<QPoint>& vertices);
     [[nodiscard]] std::vector<QPoint> GetVertices() const;
     void AddVertex(const QPoint& vertex);

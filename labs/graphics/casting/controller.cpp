@@ -28,3 +28,11 @@ QPoint Controller::GetLightSource() const {
 void Controller::SetLightSource(const QPoint& light_source) {
     light_source_ = light_source;
 }
+
+bool Controller::IsDragging() const {
+    return is_dragging_;
+}
+
+void Controller::SetDragging(bool dragging) {
+    is_dragging_ = dragging;
+}

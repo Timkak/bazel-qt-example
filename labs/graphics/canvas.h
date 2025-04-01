@@ -1,18 +1,14 @@
 #ifndef CANVAS_H
 #define CANVAS_H
 
+#include "casting/controller.h"
 #include <QPainter>
 #include <QWidget>
-
-enum class Modes : int8_t {
-    light,
-    polygons,
-};
+#include <memory>
 
 class Canvas;
 
 class CanvasMode {  // NOLINT
-
    public:
     virtual ~CanvasMode() = default;
     virtual void mousePressEvent(QMouseEvent* event, Canvas* canvas) = 0;    // NOLINT
@@ -30,22 +26,25 @@ class Canvas : public QWidget {
     void mouseReleaseEvent(QMouseEvent* event) override;
 
    public:
-    void SetMode(std::unique_ptr<CanvasMode> mode);
     explicit Canvas(QWidget* parent);
+    void SetMode(std::unique_ptr<CanvasMode> mode);
+    void SetController(std::unique_ptr<Controller> controller);
+    [[nodiscard]] Controller* GetController() const;
 
    private:
+    std::unique_ptr<Controller> controller_;
     std::unique_ptr<CanvasMode> current_mode_;
 };
 
 class LightMode : public CanvasMode {
-private:
+public:
     void mousePressEvent(QMouseEvent* event, Canvas* canvas) override;
     void mouseMoveEvent(QMouseEvent* event, Canvas* canvas) override;
     void mouseReleaseEvent(QMouseEvent* event, Canvas* canvas) override;
 };
 
 class PolygonMode : public CanvasMode {
-private:
+public:
     void mousePressEvent(QMouseEvent* event, Canvas* canvas) override;
     void mouseMoveEvent(QMouseEvent* event, Canvas* canvas) override;
     void mouseReleaseEvent(QMouseEvent* event, Canvas* canvas) override;
