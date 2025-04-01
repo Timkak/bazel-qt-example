@@ -18,6 +18,10 @@ public:
     void SetLightSource(const QPoint& light_source);
     [[nodiscard]] bool IsDragging() const;
     void SetDragging(bool dragging);
+    [[nodiscard]] std::vector<Ray> CastRays() const;
+    void IntersectRays(std::vector<Ray>* rays) const;
+    static void RemoveAdjacentRays(std::vector<Ray>* rays);
+    [[nodiscard]] Polygon CreateLightArea() const;
 private:
     std::vector<Polygon> polygons_;
     QPoint light_source_;

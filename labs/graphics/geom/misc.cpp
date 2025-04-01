@@ -18,6 +18,14 @@ double misc::CrossProductValue(const QPoint& v1, const QPoint& v2) {
     return (v1.x() * v2.y()) - (v1.y() * v2.x());
 }
 
+double misc::Angle(const QPoint& v1) {
+    double angle = std::atan2(v1.y(), v1.x());
+    if (angle < 0) {
+        angle += 2 * M_PI;
+    }
+    return angle;
+}
+
 bool misc::IsCollinear(const QPoint& v1, const QPoint& v2) {
     return std::abs(CrossProductValue(v1, v2)) < kEPS;
 }

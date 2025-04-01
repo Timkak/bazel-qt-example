@@ -3,9 +3,21 @@
 #include "casting/controller.h"
 
 #include <QMouseEvent>
+#include <QPainterPath>
 #include <memory>
 
 namespace {
+    void DrawLightArea(QPainter& painter, Controller* controller) {
+        painter.setPen(QPen(Qt::gray, 1, Qt::DashLine));
+        const auto& light_position = controller->GetLightSource();
+        const auto& rays = controller->CreateLightArea();
+
+        for (const auto& vertex : rays.GetVertices()) {
+            painter.drawLine(light_position, vertex);
+        }
+
+    }
+
     void DrawPolygons(QPainter& painter, Controller* controller) {
         painter.setPen(QPen(Qt::darkBlue, 2));
         painter.setBrush(QColor(100, 150, 255, 50));
@@ -89,6 +101,7 @@ void Canvas::paintEvent(QPaintEvent* event) {
     painter.fillRect(rect(), Qt::white);
     DrawPolygons(painter, controller_.get());
     DrawLights(painter, controller_.get());
+    DrawLightArea(painter, controller_.get());
 }
 
 
