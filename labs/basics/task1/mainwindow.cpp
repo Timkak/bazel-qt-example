@@ -148,6 +148,7 @@ void MainWindow::onCountChanged(int count) {
 
 void MainWindow::onItemClicked(QListWidgetItem* item) {
     currentIndex = item->data(Qt::UserRole).toInt();
+    history.push_back(currentIndex);
     updateQuestionView();
 }
 
