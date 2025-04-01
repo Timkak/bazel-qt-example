@@ -1,7 +1,7 @@
 #ifndef CONTROLLER_H
 #define CONTROLLER_H
 
-#include "polygon.h"
+#include "../geom/polygon.h"
 
 #include <QPoint>
 

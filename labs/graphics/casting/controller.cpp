@@ -1,5 +1,5 @@
 #include "controller.h"
-#include "polygon.h"
+#include "../geom/polygon.h"
 
 const std::vector<Polygon>& Controller::GetPolygons() const {
     return polygons_;
