@@ -68,7 +68,7 @@ MainWindow::MainWindow(QWidget* parent)
     "}");
 
     progressBar2->setTextVisible(true);
-    progressBar2->setFormat("%p% завершено");
+    progressBar2->setFormat("%p% завершено + в процессе");
     progressBar2->setMinimum(0);
     progressBar2->setMaximum(100);
 
@@ -144,22 +144,32 @@ void MainWindow::onCountChanged(int count) {
     currentIndex = -1;
     updateTicketList();
     updateStatistics();
+    updateQuestionView();
+    updateProgress();
 }
 
 void MainWindow::onItemClicked(QListWidgetItem* item) {
     currentIndex = item->data(Qt::UserRole).toInt();
-    history.push_back(currentIndex);
     updateQuestionView();
+    if (!history.empty() && history.last() == currentIndex) {
+        return;
+    }
+    history.append(currentIndex);
 }
 
 void MainWindow::onItemDoubleClicked(QListWidgetItem* item) {
     int idx = item->data(Qt::UserRole).toInt();
     Ticket& t = tickets[idx];
     t.status = (t.status == TicketStatus::Green) ? TicketStatus::Yellow : TicketStatus::Green;
+    currentIndex = idx;
     updateTicketList();
     updateQuestionView();
     updateProgress();
     updateStatistics();
+    if (!history.empty() && history.last() == currentIndex) {
+        return;
+    }
+    history.append(currentIndex);
 }
 
 void MainWindow::onNameEdited() {
@@ -218,6 +228,10 @@ void MainWindow::updateTicketList() {
 
 void MainWindow::updateQuestionView() {
     if (currentIndex == -1 || currentIndex >= tickets.size()) {
+        numberLabel->setText("Номер: ");
+        nameLabel->setText("Название: ");
+        nameEdit->setText("");
+        statusCombo->setCurrentIndex(statusToInt(TicketStatus::Default));
         return;
     }
 
