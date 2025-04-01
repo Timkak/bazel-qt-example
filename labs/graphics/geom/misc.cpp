@@ -27,5 +27,5 @@ double misc::Angle(const QPointF& v1) {
 }
 
 bool misc::IsCollinear(const QPointF& v1, const QPointF& v2) {
-    return std::abs(CrossProductValue(v1, v2)) < kEPS;
+    return std::abs(CrossProductValue(v1, v2)) < kEPS2;
 }

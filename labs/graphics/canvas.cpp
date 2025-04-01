@@ -25,6 +25,11 @@ namespace {
             painter.setPen(Qt::NoPen);
             painter.setBrush(QColor(0, 255, 255, 80));
             painter.drawPath(path);
+            
+            painter.setPen(QPen(QColor(255, 255, 0, 120), 1, Qt::DashLine));
+            for (const auto& vertex : vertices) {
+                painter.drawLine(light_position, vertex);
+            }
         }
     }
 
@@ -152,7 +157,7 @@ void PolygonMode::mousePressEvent(QMouseEvent* event, Canvas* canvas) {
             controller->AddVertexToLastPolygon(event->pos());
             break;
         case Qt::RightButton:
-            if (polygons.empty() || polygons.back().GetVertices().empty()) {
+            if (polygons.empty() || polygons.back().GetVertices().size() <= 1) {
                 return;
             }
             controller->AddVertexToLastPolygon(polygons.back().GetVertices().front());

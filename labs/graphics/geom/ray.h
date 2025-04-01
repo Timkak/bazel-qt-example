@@ -12,6 +12,7 @@ public:
     void SetBegin(const QPointF& begin);
     void SetEnd(const QPointF& end);
     void SetAngle(double angle);
+    [[nodiscard]] Ray Scale(double scale) const ;
     [[nodiscard]] Ray Rotate(double angle) const;
 private: 
     QPointF begin_;

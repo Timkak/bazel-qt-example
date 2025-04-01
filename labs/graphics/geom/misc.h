@@ -4,7 +4,9 @@
 #include <QPointF>
 
 namespace misc {
-    constexpr double kEPS = 1e-9;
+    constexpr double kEPS1 = 1e-4;
+    constexpr double kEPS2 = 1e-9;
+    constexpr double kINF = 1e6;
     double DotProduct(const QPointF& v1, const QPointF& v2);
     double Length(const QPointF& p1, const QPointF& p2);
     double Length(const QPointF& v1);

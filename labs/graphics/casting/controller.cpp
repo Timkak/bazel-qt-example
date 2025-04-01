@@ -76,8 +76,8 @@ std::vector<Ray> Controller::CastRays() const {
     for (const auto& polygon : polygons_) {
         for (const auto& vertex : polygon.GetVertices()) {
             const auto ray = Ray(light_source_, vertex, misc::Angle(vertex - light_source_));
-            const auto ray2 = ray.Rotate(misc::kEPS);
-            const auto ray3 = ray.Rotate(-misc::kEPS);
+            const auto ray2 = ray.Rotate(misc::kEPS2).Scale(misc::kINF);
+            const auto ray3 = ray.Rotate(-misc::kEPS2).Scale(misc::kINF);
             casted_rays.emplace_back(ray);
             casted_rays.emplace_back(ray2);
             casted_rays.emplace_back(ray3);
@@ -114,14 +114,13 @@ void Controller::RemoveAdjacentRays(std::vector<Ray>* rays){
     });
     std::vector<Ray> filtered_rays;
     filtered_rays.reserve(rays->size());
-    filtered_rays.push_back(rays->at(0));
+    filtered_rays.push_back(rays->front());
+
     for (size_t i = 1; i < rays->size(); ++i) {
         const auto& ray1 = rays->at(i);
         const auto& ray = filtered_rays.back();
-        const auto& ray0 = filtered_rays.at(0);
         double distance = misc::Length(ray1.GetEnd(), ray.GetEnd());
-        double distance0 = misc::Length(ray1.GetEnd(), ray0.GetEnd());
-        if (distance > misc::kEPS && distance0 > misc::kEPS) {
+        if (distance > misc::kEPS1) {
             filtered_rays.push_back(ray1);
         }
     }

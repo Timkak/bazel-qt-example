@@ -31,8 +31,15 @@ void Ray::SetAngle(double angle) {
 Ray Ray::Rotate(double angle) const {
     double new_angle = angle_ + angle; 
     double length = misc::Length(begin_, end_);
-    int new_x = static_cast<int>(length * std::cos(new_angle));
-    int new_y = static_cast<int>(length * std::sin(new_angle));
+    double new_x = length * std::cos(new_angle);
+    double new_y = length * std::sin(new_angle);
     QPointF new_end = begin_ + QPointF(new_x, new_y);
     return {begin_, new_end, new_angle}; 
+}
+
+Ray Ray::Scale(double scale) const {
+    double new_x = begin_.x() + (scale * (end_.x() - begin_.x()));
+    double new_y = begin_.y() + (scale * (end_.y() - begin_.y()));
+    QPointF new_end(new_x, new_y);
+    return {begin_, new_end, angle_};
 }
