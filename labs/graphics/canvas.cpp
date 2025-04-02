@@ -6,7 +6,6 @@
 #include <QPainterPath>
 #include <QPen>
 #include <QTimer>
-#include <algorithm>
 #include <cmath>
 #include <memory>
 
@@ -84,8 +83,8 @@ void Canvas::paintEvent(QPaintEvent* event) {
     painter.setRenderHints(QPainter::TextAntialiasing);
     painter.setRenderHints(QPainter::SmoothPixmapTransform);
 
-    DrawPolygons(painter, controller_.get());
     DrawLightArea(painter, controller_.get());
+    DrawPolygons(painter, controller_.get());
     DrawLights(painter, controller_.get());
 }
 
