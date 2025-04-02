@@ -1,14 +1,13 @@
 #include "polygon.h"
 
 #include "misc.h"
+
 #include <optional>
 
 namespace {
 std::optional<QPointF> RaySegmentIntersection(
     const QPointF& begin, const QPointF& end, const Ray& ray) {
-    QPointF v1 = end - begin;
-    QPointF v2 = ray.GetEnd() - ray.GetBegin();
-    if (misc::IsCollinear(v1, v2)) {
+    if (misc::IsCollinear(end - begin, ray.GetEnd() - ray.GetBegin())) {
         return std::nullopt;
     }
     const double r_px = ray.GetBegin().x();
@@ -23,11 +22,11 @@ std::optional<QPointF> RaySegmentIntersection(
 
     const double t2 = (r_dx * (s_py - r_py) + r_dy * (r_px - s_px)) / (s_dx * r_dy - s_dy * r_dx);
     const double t1 = (s_px + s_dx * t2 - r_px) / r_dx;
-    
+
     if (t2 < 0 || t2 > 1 || t1 < 0) {
         return std::nullopt;
     }
-    
+
     QPointF intersection = ray.GetBegin() + t1 * (ray.GetEnd() - ray.GetBegin());
     return intersection;
 }

@@ -7,20 +7,20 @@
 #include <QMainWindow>
 #include <QPushButton>
 
-class MainWindow : public QMainWindow { // NOLINT
+class MainWindow : public QMainWindow {  // NOLINT
     Q_OBJECT
     // todo: try Q_PROPERTY
-public:
+   public:
     MainWindow();
     ~MainWindow() override = default;
-private slots:
+   private slots:
     void OnModeChanged();
     void OnCanvasReset();
     void OnFinishPolygon();
 
-private: // NOLINT 
+   private:  // NOLINT
     void SetupIU();
-    
+
     QComboBox* mode_selector_;
     Canvas* canvas_;
 };

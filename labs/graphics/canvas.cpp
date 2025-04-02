@@ -6,77 +6,77 @@
 #include <QPainterPath>
 #include <QPen>
 #include <QTimer>
+#include <algorithm>
+#include <cmath>
 #include <memory>
 
 namespace {
-    void DrawLightArea(QPainter& painter, Controller* controller) {
-        for (const auto& [light_position, rays] : controller->CreateLightArea()) {
-            QPainterPath path;
-            const auto& vertices = rays.GetVertices();
-            if (vertices.empty()) {
-                continue;
-            }
-            path.moveTo(light_position);
-            for (const auto& vertex : vertices) {
-                path.lineTo(vertex);
-            }
-            path.closeSubpath();
-            painter.setPen(Qt::NoPen);
-            if (light_position == controller->GetLightSource()) {
-                painter.setBrush(QColor(255, 215, 0, 80));
-            }
-            else {
-                painter.setBrush(QColor(0, 255, 255, 80));
-            }
-            painter.drawPath(path);
-            painter.setPen(QPen(Qt::red, 1, Qt::DashLine));
-            for (const auto& vertex : vertices) {
-                painter.drawLine(light_position, vertex);
-            }
+void DrawLightArea(QPainter& painter, Controller* controller) {
+    auto light_area = controller->CreateLightArea();
+    for (const auto& [light_position, rays, light_type] : light_area) {
+        QPainterPath path;
+        const auto& vertices = rays.GetVertices();
+        if (vertices.empty()) {
+            continue;
         }
+        path.moveTo(light_position);
+        for (const auto& vertex : vertices) {
+            path.lineTo(vertex);
+        }
+        path.closeSubpath();
+        painter.setPen(Qt::NoPen);
+        if (light_type == light_type::main_light) {
+            painter.setBrush(QColor(255, 215, 0, 80));
+        } else if (light_type == light_type::satellite_light) {
+            painter.setBrush(QColor(255, 215, 0, 30));
+        } else {
+            painter.setBrush(QColor(0, 255, 255, 80));
+        }
+        painter.drawPath(path);
+    }
+}
+
+void DrawPolygons(QPainter& painter, Controller* controller) {
+    painter.setPen(QPen(Qt::darkBlue, 2));
+    painter.setBrush(QColor(100, 150, 255, 50));
+    const auto& polygons = controller->GetPolygons();
+
+    for (const auto& polygon : polygons) {
+        const auto& vertices = polygon.GetVertices();
+        if (vertices.size() < 2) {
+            continue;
+        }
+        for (size_t i = 0; i < vertices.size() - 1; ++i) {
+            painter.drawLine(vertices[i], vertices[i + 1]);
+        }
+        painter.drawLine(vertices.back(), vertices.front());
     }
 
-    void DrawPolygons(QPainter& painter, Controller* controller) {
-        painter.setPen(QPen(Qt::darkBlue, 2));
-        painter.setBrush(QColor(100, 150, 255, 50));
-        const auto& polygons = controller->GetPolygons();
-        
-        for (const auto& polygon : polygons) {
-            const auto& vertices = polygon.GetVertices();
-            if (vertices.size() < 2) {
-                continue;
-            }
-            for (size_t i = 0; i < vertices.size() - 1; ++i) {
-                painter.drawLine(vertices[i], vertices[i + 1]);
-            }
-            painter.drawLine(vertices.back(), vertices.front());
-        }
-
-        if (!controller->IsComplete() && !polygons.empty()) {
-            const auto& last_polygon = polygons.back();
-            if (!last_polygon.GetVertices().empty()) {
-                const auto& vertices = last_polygon.GetVertices();
-                const auto& last_vertex = vertices.back();
-                painter.setPen(QPen(Qt::red, 2));
-                painter.setBrush(Qt::red);
-                painter.drawEllipse(last_vertex, 5, 5);
-            }
+    if (!controller->IsComplete() && !polygons.empty()) {
+        const auto& last_polygon = polygons.back();
+        if (!last_polygon.GetVertices().empty()) {
+            const auto& vertices = last_polygon.GetVertices();
+            const auto& last_vertex = vertices.back();
+            painter.setPen(QPen(Qt::red, 2));
+            painter.setBrush(Qt::red);
+            painter.drawEllipse(last_vertex, 5, 5);
         }
     }
-    
-    void DrawLights(QPainter& painter, Controller* controller) {
-        const auto& light_position = controller->GetLightSource();
+}
+
+void DrawLights(QPainter& painter, Controller* controller) {
+    const auto& light_position = controller->GetLightSource();
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(Qt::red);
+    painter.drawEllipse(light_position, 8, 8);
+    for (const auto& static_light : controller->GetStaticLights()) {
         painter.setPen(Qt::NoPen);
         painter.setBrush(Qt::red);
-        painter.drawEllipse(light_position, 8, 8);
-        for (const auto& static_light : controller->GetStaticLights()) {
-            painter.setPen(Qt::NoPen);
-            painter.setBrush(Qt::red);
-            painter.drawEllipse(static_light, 5, 5);
-        }
+        painter.drawEllipse(static_light, 5, 5);
     }
-}; // namespace
-   
+}
+};  // namespace
+
 void Canvas::paintEvent(QPaintEvent* event) {
     Q_UNUSED(event);
     QPainter painter(this);
@@ -85,8 +85,8 @@ void Canvas::paintEvent(QPaintEvent* event) {
     painter.setRenderHints(QPainter::SmoothPixmapTransform);
 
     DrawPolygons(painter, controller_.get());
-    DrawLights(painter, controller_.get());
     DrawLightArea(painter, controller_.get());
+    DrawLights(painter, controller_.get());
 }
 
 Canvas::Canvas(QWidget* parent) : QWidget(parent) {
@@ -94,9 +94,7 @@ Canvas::Canvas(QWidget* parent) : QWidget(parent) {
     setAutoFillBackground(true);
     controller_ = std::make_unique<Controller>();
     SetMode(std::make_unique<LightMode>());
-    QTimer::singleShot(0, this, [this]() {
-        UpdateBorder(contentsRect());
-    });
+    QTimer::singleShot(0, this, [this]() { UpdateBorder(contentsRect()); });
 }
 
 void Canvas::SetMode(std::unique_ptr<CanvasMode> mode) {
@@ -118,16 +116,20 @@ void Canvas::UpdateBorder(const QRect& rect) {
     border_polygon.AddVertex(QPointF(rect.right(), rect.bottom()));
     border_polygon.AddVertex(QPointF(rect.left(), rect.bottom()));
     border_polygon.AddVertex(QPointF(rect.left(), rect.top()));
-    
+
     auto& polygons = controller_->GetPolygons();
-    
+
     if (polygons.empty()) {
         controller_->SetLightSource(rect.center());
         polygons.emplace_back(border_polygon);
-    }
-    else {
+    } else {
         polygons.at(0) = border_polygon;
     }
+}
+
+void Canvas::resizeEvent(QResizeEvent* event) {
+    QWidget::resizeEvent(event);
+    UpdateBorder(contentsRect());
 }
 
 void Canvas::ResetCanvas() {
@@ -137,11 +139,6 @@ void Canvas::ResetCanvas() {
     controller_->SetDragging(false);
     controller_->SetLightSource(contentsRect().center());
     this->update();
-}
-
-void Canvas::resizeEvent(QResizeEvent* event) {
-    QWidget::resizeEvent(event);
-    UpdateBorder(contentsRect());
 }
 
 void Canvas::mousePressEvent(QMouseEvent* event) {
@@ -165,7 +162,6 @@ void Canvas::mouseReleaseEvent(QMouseEvent* event) {
 void LightMode::mousePressEvent(QMouseEvent* event, Canvas* canvas) {
     if (event->button() == Qt::LeftButton) {
         auto* controller = canvas->GetController();
-        controller->SetLightSource(event->pos());
         controller->SetDragging(true);
         canvas->update();
     }
