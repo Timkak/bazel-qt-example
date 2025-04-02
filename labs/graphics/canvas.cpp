@@ -10,24 +10,23 @@
 
 namespace {
     void DrawLightArea(QPainter& painter, Controller* controller) {
-        QPainterPath path;
         for (const auto& [light_position, rays] : controller->CreateLightArea()) {
+            QPainterPath path;
             const auto& vertices = rays.GetVertices();
-            if (!vertices.empty()) {
-                path.moveTo(light_position);
-                for (const auto& vertex : vertices) {
-                    path.lineTo(vertex);
-                }
-                path.closeSubpath();
-
-                painter.setPen(Qt::NoPen);
-                painter.setBrush(QColor(0, 255, 255, 80));
-                painter.drawPath(path);
-
-                painter.setPen(QPen(QColor(255, 255, 0, 120), 1, Qt::DashLine));
-                for (const auto& vertex : vertices) {
-                    painter.drawLine(light_position, vertex);
-                }
+            if (vertices.empty()) {
+                continue;
+            }
+            path.moveTo(light_position);
+            for (const auto& vertex : vertices) {
+                path.lineTo(vertex);
+            }
+            path.closeSubpath();
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(QColor(0, 255, 255, 80));
+            painter.drawPath(path);
+            painter.setPen(QPen(QColor(255, 255, 0, 120), 1, Qt::DashLine));
+            for (const auto& vertex : vertices) {
+                painter.drawLine(light_position, vertex);
             }
         }
     }

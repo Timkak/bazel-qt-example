@@ -77,7 +77,7 @@ std::vector<Ray> Controller::CastRays(const QPointF& light_source) const {
     
     for (const auto& polygon : polygons_) {
         for (const auto& vertex : polygon.GetVertices()) {
-            const auto ray = Ray(light_source, vertex, misc::Angle(vertex - light_source_));
+            const auto ray = Ray(light_source, vertex, misc::Angle(vertex - light_source));
             const auto ray2 = ray.Rotate(misc::kEPS2).Scale(misc::kINF);
             const auto ray3 = ray.Rotate(-misc::kEPS2).Scale(misc::kINF);
             casted_rays.emplace_back(ray);
