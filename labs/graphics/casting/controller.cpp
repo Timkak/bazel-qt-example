@@ -63,6 +63,10 @@ void Controller::AddStaticLight(const QPointF& new_static_light) {
     static_lights_.push_back(new_static_light);
 }
 
+void Controller::UpdateLastStaticLight(const QPoint& new_static_light) {
+    static_lights_.back() = new_static_light;
+}
+
 std::vector<Ray> Controller::CastRays(const QPointF& light_source) const {
     if (light_source.isNull() || polygons_.empty()) {
         return {};

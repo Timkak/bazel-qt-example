@@ -219,7 +219,7 @@ void StaticLightsMode::mousePressEvent(QMouseEvent* event, Canvas* canvas) {
 void StaticLightsMode::mouseMoveEvent(QMouseEvent* event, Canvas* canvas) {
     auto* controller = canvas->GetController();
     if (controller->IsDragging()) {
-        controller->SetLightSource(event->pos());
+        controller->UpdateLastStaticLight(event->pos());
         canvas->update();
     }
 }
