@@ -101,6 +101,30 @@ Controller* Canvas::GetController() const {
     return controller_.get();
 }
 
+void Canvas::UpdateBorder(const QRect& rect) {
+    Polygon border_polygon;
+    border_polygon.AddVertex(QPointF(rect.left(), rect.top()));
+    border_polygon.AddVertex(QPointF(rect.right(), rect.top()));
+    border_polygon.AddVertex(QPointF(rect.right(), rect.bottom()));
+    border_polygon.AddVertex(QPointF(rect.left(), rect.bottom()));
+    border_polygon.AddVertex(QPointF(rect.left(), rect.top()));
+    
+    auto& polygons = controller_->GetPolygons();
+    
+    if (polygons.empty()) {
+        polygons.emplace_back(border_polygon);
+    }
+    else {
+        polygons.at(0) = border_polygon;
+    }
+    controller_->SetLightSource(rect.center());
+}
+
+void Canvas::resizeEvent(QResizeEvent* event) {
+    QWidget::resizeEvent(event);
+    UpdateBorder(contentsRect());
+}
+
 void Canvas::mousePressEvent(QMouseEvent* event) {
     if (current_mode_) {
         current_mode_->mousePressEvent(event, this);
@@ -184,45 +208,25 @@ void PolygonMode::mouseReleaseEvent(QMouseEvent* event, Canvas* canvas) {
 }
 
 void StaticLightsMode::mousePressEvent(QMouseEvent* event, Canvas* canvas) {
-    auto* controller = canvas->GetController();
-
-    if (controller != nullptr) {
+    if (event->button() == Qt::LeftButton) {
+        auto* controller = canvas->GetController();
         controller->AddStaticLight(event->pos());
+        controller->SetDragging(true);
         canvas->update();
     }
 }
 
 void StaticLightsMode::mouseMoveEvent(QMouseEvent* event, Canvas* canvas) {
-    Q_UNUSED(event);
-    Q_UNUSED(canvas);
+    auto* controller = canvas->GetController();
+    if (controller->IsDragging()) {
+        controller->SetLightSource(event->pos());
+        canvas->update();
+    }
 }
 
 void StaticLightsMode::mouseReleaseEvent(QMouseEvent* event, Canvas* canvas) {
-    Q_UNUSED(event);
-    Q_UNUSED(canvas);
-}
-
-
-void Canvas::UpdateBorder(const QRect& rect) {
-    Polygon border_polygon;
-    border_polygon.AddVertex(QPointF(rect.left(), rect.top()));
-    border_polygon.AddVertex(QPointF(rect.right(), rect.top()));
-    border_polygon.AddVertex(QPointF(rect.right(), rect.bottom()));
-    border_polygon.AddVertex(QPointF(rect.left(), rect.bottom()));
-    border_polygon.AddVertex(QPointF(rect.left(), rect.top()));
-    
-    auto& polygons = controller_->GetPolygons();
-    
-    if (polygons.empty()) {
-        polygons.emplace_back(border_polygon);
+    if (event->button() == Qt::LeftButton) {
+        auto* controller = canvas->GetController();
+        controller->SetDragging(false);
     }
-    else {
-        polygons.at(0) = border_polygon;
-    }
-    controller_->SetLightSource(rect.center());
-}
-
-void Canvas::resizeEvent(QResizeEvent* event) {
-    QWidget::resizeEvent(event);
-    UpdateBorder(contentsRect());
 }
