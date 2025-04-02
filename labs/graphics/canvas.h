@@ -52,4 +52,11 @@ public:
     void mouseReleaseEvent(QMouseEvent* event, Canvas* canvas) override;
 };
 
+class StaticLightsMode : public CanvasMode {
+public:
+    void mousePressEvent(QMouseEvent* event, Canvas* canvas) override;
+    void mouseMoveEvent(QMouseEvent* event, Canvas* canvas) override;
+    void mouseReleaseEvent(QMouseEvent* event, Canvas* canvas) override;
+};
+
 #endif

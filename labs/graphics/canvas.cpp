@@ -11,24 +11,23 @@
 namespace {
     void DrawLightArea(QPainter& painter, Controller* controller) {
         QPainterPath path;
-        const auto& light_position = controller->GetLightSource();
-        const auto& rays = controller->CreateLightArea();
-        const auto& vertices = rays.GetVertices();
+        for (const auto& [light_position, rays] : controller->CreateLightArea()) {
+            const auto& vertices = rays.GetVertices();
+            if (!vertices.empty()) {
+                path.moveTo(light_position);
+                for (const auto& vertex : vertices) {
+                    path.lineTo(vertex);
+                }
+                path.closeSubpath();
 
-        if (!vertices.empty()) {
-            path.moveTo(light_position);
-            for (const auto& vertex : vertices) {
-                path.lineTo(vertex);
-            }
-            path.closeSubpath();
-            
-            painter.setPen(Qt::NoPen);
-            painter.setBrush(QColor(0, 255, 255, 80));
-            painter.drawPath(path);
-            
-            painter.setPen(QPen(QColor(255, 255, 0, 120), 1, Qt::DashLine));
-            for (const auto& vertex : vertices) {
-                painter.drawLine(light_position, vertex);
+                painter.setPen(Qt::NoPen);
+                painter.setBrush(QColor(0, 255, 255, 80));
+                painter.drawPath(path);
+
+                painter.setPen(QPen(QColor(255, 255, 0, 120), 1, Qt::DashLine));
+                for (const auto& vertex : vertices) {
+                    painter.drawLine(light_position, vertex);
+                }
             }
         }
     }
@@ -67,6 +66,18 @@ namespace {
         painter.drawEllipse(light_position, 8, 8);
     }
 }; // namespace
+   
+void Canvas::paintEvent(QPaintEvent* event) {
+    Q_UNUSED(event);
+    QPainter painter(this);
+    painter.setRenderHints(QPainter::Antialiasing);
+    painter.setRenderHints(QPainter::TextAntialiasing);
+    painter.setRenderHints(QPainter::SmoothPixmapTransform);
+
+    DrawPolygons(painter, controller_.get());
+    DrawLights(painter, controller_.get());
+    DrawLightArea(painter, controller_.get());
+}
 
 Canvas::Canvas(QWidget* parent) : QWidget(parent) {
     setBackgroundRole(QPalette::Base);
@@ -107,19 +118,6 @@ void Canvas::mouseReleaseEvent(QMouseEvent* event) {
         current_mode_->mouseReleaseEvent(event, this);
     }
 }
-
-void Canvas::paintEvent(QPaintEvent* event) {
-    Q_UNUSED(event);
-    QPainter painter(this);
-    painter.setRenderHints(QPainter::Antialiasing);
-    painter.setRenderHints(QPainter::TextAntialiasing);
-    painter.setRenderHints(QPainter::SmoothPixmapTransform);
-
-    DrawPolygons(painter, controller_.get());
-    DrawLights(painter, controller_.get());
-    DrawLightArea(painter, controller_.get());
-}
-
 
 void LightMode::mousePressEvent(QMouseEvent* event, Canvas* canvas) {
     if (event->button() == Qt::LeftButton) {
@@ -184,6 +182,26 @@ void PolygonMode::mouseReleaseEvent(QMouseEvent* event, Canvas* canvas) {
     Q_UNUSED(event);
     Q_UNUSED(canvas);
 }
+
+void StaticLightsMode::mousePressEvent(QMouseEvent* event, Canvas* canvas) {
+    auto* controller = canvas->GetController();
+
+    if (controller != nullptr) {
+        controller->AddStaticLight(event->pos());
+        canvas->update();
+    }
+}
+
+void StaticLightsMode::mouseMoveEvent(QMouseEvent* event, Canvas* canvas) {
+    Q_UNUSED(event);
+    Q_UNUSED(canvas);
+}
+
+void StaticLightsMode::mouseReleaseEvent(QMouseEvent* event, Canvas* canvas) {
+    Q_UNUSED(event);
+    Q_UNUSED(canvas);
+}
+
 
 void Canvas::UpdateBorder(const QRect& rect) {
     Polygon border_polygon;

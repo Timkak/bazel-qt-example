@@ -51,8 +51,20 @@ void Controller::SetComplete(bool complete) {
     is_complete_ = complete;
 }
 
-std::vector<Ray> Controller::CastRays() const {
-    if (light_source_.isNull() || polygons_.empty()) {
+const std::vector<QPointF>& Controller::GetStaticLights() const {
+    return static_lights_;
+}
+
+std::vector<QPointF>& Controller::GetStaticLights() {
+    return static_lights_;
+}
+
+void Controller::AddStaticLight(const QPointF& new_static_light) {
+    static_lights_.push_back(new_static_light);
+}
+
+std::vector<Ray> Controller::CastRays(const QPointF& light_source) const {
+    if (light_source.isNull() || polygons_.empty()) {
         return {};
     }
 
@@ -61,7 +73,7 @@ std::vector<Ray> Controller::CastRays() const {
     
     for (const auto& polygon : polygons_) {
         for (const auto& vertex : polygon.GetVertices()) {
-            const auto ray = Ray(light_source_, vertex, misc::Angle(vertex - light_source_));
+            const auto ray = Ray(light_source, vertex, misc::Angle(vertex - light_source_));
             const auto ray2 = ray.Rotate(misc::kEPS2).Scale(misc::kINF);
             const auto ray3 = ray.Rotate(-misc::kEPS2).Scale(misc::kINF);
             casted_rays.emplace_back(ray);
@@ -113,21 +125,32 @@ void Controller::RemoveAdjacentRays(std::vector<Ray>* rays){
     rays->swap(filtered_rays);
 }
 
-Polygon Controller::CreateLightArea() const {
-    auto rays = CastRays();
-    if (rays.empty()) {
-        return {}; 
-    }
-    IntersectRays(&rays);
-    RemoveAdjacentRays(&rays);
-    std::vector<QPointF> light_area_points;
-    light_area_points.reserve(rays.size());
 
-    std::ranges::transform(rays, std::back_inserter(light_area_points), [](const Ray& ray) { return ray.GetEnd(); });
-    
-    if (!light_area_points.empty() && light_area_points.front() != light_area_points.back()) {
-        light_area_points.push_back(light_area_points.front());
+std::vector<std::pair<QPointF, Polygon>> Controller::CreateLightArea() const {
+    auto process = [&](const QPointF& light_source) -> Polygon {
+        auto rays = CastRays(light_source);
+        if (rays.empty()) {
+            return {}; 
+        }
+        IntersectRays(&rays);
+        RemoveAdjacentRays(&rays);
+        std::vector<QPointF> light_area_points;
+        light_area_points.reserve(rays.size());
+
+        std::ranges::transform(rays, std::back_inserter(light_area_points), [](const Ray& ray) { return ray.GetEnd(); });
+        
+        if (!light_area_points.empty() && light_area_points.front() != light_area_points.back()) {
+            light_area_points.push_back(light_area_points.front());
+        }
+        return Polygon(light_area_points);
+    };
+    std::vector<std::pair<QPointF, Polygon>> light_area;
+    light_area.reserve(static_lights_.size() + 1);
+    for (auto light_source : static_lights_) {
+        light_area.emplace_back(light_source, process(light_source));
     }
-    
-    return Polygon(light_area_points);
+    if (!light_source_.isNull()) {
+        light_area.emplace_back(light_source_, process(light_source_));
+    }
+    return light_area;
 }

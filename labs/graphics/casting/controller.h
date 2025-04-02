@@ -26,12 +26,17 @@ public:
     [[nodiscard]] bool IsComplete() const;
     void SetComplete(bool complete);
 
-    [[nodiscard]] std::vector<Ray> CastRays() const;
+    [[nodiscard]] std::vector<Ray> CastRays(const QPointF& light_source) const;
     void IntersectRays(std::vector<Ray>* rays) const;
     static void RemoveAdjacentRays(std::vector<Ray>* rays);
-    [[nodiscard]] Polygon CreateLightArea() const;
+    [[nodiscard]] std::vector<std::pair<QPointF, Polygon>> CreateLightArea() const;
+
+    [[nodiscard]] const std::vector<QPointF>& GetStaticLights() const;
+    [[nodiscard]] std::vector<QPointF>& GetStaticLights();
+    void AddStaticLight(const QPointF& new_static_light);
 private:
     std::vector<Polygon> polygons_;
+    std::vector<QPointF> static_lights_;
     QPointF light_source_;
     bool is_dragging_ = false;
     bool is_complete_ = true;

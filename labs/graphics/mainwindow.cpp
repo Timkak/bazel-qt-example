@@ -19,7 +19,7 @@ void MainWindow::SetupIU() {
     canvas_ = new Canvas(this);
 
     mode_selector_ = new QComboBox(this);
-    mode_selector_->addItems({"Light", "Polygon"});
+    mode_selector_->addItems({"Light", "Polygon", "Static Light"});
     mode_selector_->setCurrentIndex(0);
 
     // DESIGN
@@ -41,6 +41,9 @@ void MainWindow::OnModeChanged() {
             break;
         case 1:
             mode = std::make_unique<PolygonMode>();
+            break;
+        case 2:
+            mode = std::make_unique<StaticLightsMode>();
             break;
         default:
             mode = std::make_unique<LightMode>();
