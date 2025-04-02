@@ -5,6 +5,7 @@
 
 #include <QComboBox>
 #include <QMainWindow>
+#include <QPushButton>
 
 class MainWindow : public QMainWindow { // NOLINT
     Q_OBJECT
@@ -14,6 +15,7 @@ public:
     ~MainWindow() override = default;
 private slots:
     void OnModeChanged();
+    void OnCanvasReset();
 
 private: // NOLINT 
     void SetupIU();

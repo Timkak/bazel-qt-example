@@ -31,6 +31,7 @@ class Canvas : public QWidget {
     void SetMode(std::unique_ptr<CanvasMode> mode);
     void SetController(std::unique_ptr<Controller> controller);
     void UpdateBorder(const QRect& rect);
+    void ResetCanvas();
     [[nodiscard]] Controller* GetController() const;
 
    private:

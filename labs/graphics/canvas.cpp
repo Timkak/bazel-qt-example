@@ -22,9 +22,14 @@ namespace {
             }
             path.closeSubpath();
             painter.setPen(Qt::NoPen);
-            painter.setBrush(QColor(0, 255, 255, 80));
+            if (light_position == controller->GetLightSource()) {
+                painter.setBrush(QColor(255, 215, 0, 80));
+            }
+            else {
+                painter.setBrush(QColor(0, 255, 255, 80));
+            }
             painter.drawPath(path);
-            painter.setPen(QPen(QColor(255, 255, 0, 120), 1, Qt::DashLine));
+            painter.setPen(QPen(Qt::red, 1, Qt::DashLine));
             for (const auto& vertex : vertices) {
                 painter.drawLine(light_position, vertex);
             }
@@ -58,11 +63,17 @@ namespace {
             }
         }
     }
+    
     void DrawLights(QPainter& painter, Controller* controller) {
         const auto& light_position = controller->GetLightSource();
         painter.setPen(Qt::NoPen);
-        painter.setBrush(Qt::yellow);
+        painter.setBrush(Qt::red);
         painter.drawEllipse(light_position, 8, 8);
+        for (auto static_light : controller->GetStaticLights()) {
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(Qt::red);
+            painter.drawEllipse(static_light, 5, 5);
+        }
     }
 }; // namespace
    
@@ -111,12 +122,21 @@ void Canvas::UpdateBorder(const QRect& rect) {
     auto& polygons = controller_->GetPolygons();
     
     if (polygons.empty()) {
+        controller_->SetLightSource(rect.center());
         polygons.emplace_back(border_polygon);
     }
     else {
         polygons.at(0) = border_polygon;
     }
-    controller_->SetLightSource(rect.center());
+}
+
+void Canvas::ResetCanvas() {
+    controller_->GetPolygons().resize(1);
+    controller_->GetStaticLights().clear();
+    controller_->SetComplete(true);
+    controller_->SetDragging(false);
+    controller_->SetLightSource(contentsRect().center());
+    this->update();
 }
 
 void Canvas::resizeEvent(QResizeEvent* event) {
