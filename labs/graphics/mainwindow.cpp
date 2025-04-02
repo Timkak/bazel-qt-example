@@ -28,6 +28,8 @@ void MainWindow::SetupIU() {
     QMenu* file_menu = menu_bar->addMenu("File");
     QAction* reset_action = file_menu->addAction("Reset Canvas (ctrl + r)");
     reset_action->setShortcut(QKeySequence("Ctrl+R"));
+    QAction* complete_action = file_menu->addAction("Complete Polygon (ctrl + enter)");
+    complete_action->setShortcut(QKeySequence("Ctrl+Tab"));
     
     // DESIGN
     layout->addWidget(mode_selector_);
@@ -37,7 +39,9 @@ void MainWindow::SetupIU() {
 
     // CONNECTIONS
     connect(mode_selector_, &QComboBox::currentIndexChanged, this, &MainWindow::OnModeChanged);
+    connect(mode_selector_, &QComboBox::currentIndexChanged, this, &MainWindow::OnFinishPolygon);
     connect(reset_action, &QAction::triggered, this, &MainWindow::OnCanvasReset);
+    connect(complete_action, &QAction::triggered, this, &MainWindow::OnFinishPolygon);
 }
 
 void MainWindow::OnModeChanged() {
@@ -65,5 +69,10 @@ void MainWindow::OnCanvasReset() {
     canvas_->ResetCanvas();
     canvas_->SetMode(std::make_unique<LightMode>());
     mode_selector_->setCurrentIndex(0);
+}
+
+void MainWindow::OnFinishPolygon() {
+    canvas_->GetController()->FinishPolygon();
+    canvas_->update();
 }
 // NOLINTEND(cppcoreguidelines-owning-memory)

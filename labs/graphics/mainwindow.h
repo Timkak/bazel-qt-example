@@ -16,6 +16,7 @@ public:
 private slots:
     void OnModeChanged();
     void OnCanvasReset();
+    void OnFinishPolygon();
 
 private: // NOLINT 
     void SetupIU();

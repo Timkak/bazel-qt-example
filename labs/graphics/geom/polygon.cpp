@@ -36,7 +36,7 @@ std::optional<QPointF> RaySegmentIntersection(
 Polygon::Polygon(std::vector<QPointF>& vertices) : vertices_(vertices) {
 }
 
-std::vector<QPointF> Polygon::GetVertices() const {
+const std::vector<QPointF>& Polygon::GetVertices() const {
     return vertices_;
 }
 

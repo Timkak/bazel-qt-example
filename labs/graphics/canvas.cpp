@@ -69,7 +69,7 @@ namespace {
         painter.setPen(Qt::NoPen);
         painter.setBrush(Qt::red);
         painter.drawEllipse(light_position, 8, 8);
-        for (auto static_light : controller->GetStaticLights()) {
+        for (const auto& static_light : controller->GetStaticLights()) {
             painter.setPen(Qt::NoPen);
             painter.setBrush(Qt::red);
             painter.drawEllipse(static_light, 5, 5);
@@ -188,7 +188,6 @@ void LightMode::mouseReleaseEvent(QMouseEvent* event, Canvas* canvas) {
 
 void PolygonMode::mousePressEvent(QMouseEvent* event, Canvas* canvas) {
     auto* controller = canvas->GetController();
-    const auto& polygons = controller->GetPolygons();
     switch (event->button()) {
         case Qt::LeftButton:
             if (controller->IsComplete()) {
@@ -198,11 +197,7 @@ void PolygonMode::mousePressEvent(QMouseEvent* event, Canvas* canvas) {
             controller->AddVertexToLastPolygon(event->pos());
             break;
         case Qt::RightButton:
-            if (polygons.empty() || polygons.back().GetVertices().size() <= 1) {
-                return;
-            }
-            controller->AddVertexToLastPolygon(polygons.back().GetVertices().front());
-            controller->SetComplete(true);
+            controller->FinishPolygon();
             break;
         default:
             return;

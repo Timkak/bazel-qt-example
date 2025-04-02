@@ -35,6 +35,8 @@ public:
     [[nodiscard]] std::vector<QPointF>& GetStaticLights();
     void AddStaticLight(const QPointF& new_static_light);
     void UpdateLastStaticLight(const QPoint& new_static_light);
+    
+    void FinishPolygon();
 private:
     std::vector<Polygon> polygons_;
     std::vector<QPointF> static_lights_;

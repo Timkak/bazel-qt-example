@@ -76,7 +76,8 @@ std::vector<Ray> Controller::CastRays(const QPointF& light_source) const {
     casted_rays.reserve(polygons_.size() * 3 * 10); // 3 rays per vertex + assume all polygons have at most 10 verteces
     
     for (const auto& polygon : polygons_) {
-        for (const auto& vertex : polygon.GetVertices()) {
+        const auto& vertices = polygon.GetVertices();
+        for (const auto& vertex : vertices) {
             const auto ray = Ray(light_source, vertex, misc::Angle(vertex - light_source));
             const auto ray2 = ray.Rotate(misc::kEPS2).Scale(misc::kINF);
             const auto ray3 = ray.Rotate(-misc::kEPS2).Scale(misc::kINF);
@@ -95,7 +96,7 @@ void Controller::IntersectRays(std::vector<Ray>* rays) const {
     }
     for (auto& ray : *rays) {
         for (const auto& polygon : polygons_) {
-            auto intersection = polygon.IntersectRay(ray);
+            const auto& intersection = polygon.IntersectRay(ray);
             if (!intersection.has_value()) {
                 continue;
             }
@@ -134,7 +135,7 @@ std::vector<std::pair<QPointF, Polygon>> Controller::CreateLightArea() const {
     auto process = [&](const QPointF& light_source) -> Polygon {
         auto rays = CastRays(light_source);
         if (rays.empty()) {
-            return {}; 
+            return {};
         }
         IntersectRays(&rays);
         RemoveAdjacentRays(&rays);
@@ -150,11 +151,26 @@ std::vector<std::pair<QPointF, Polygon>> Controller::CreateLightArea() const {
     };
     std::vector<std::pair<QPointF, Polygon>> light_area;
     light_area.reserve(static_lights_.size() + 1);
-    for (auto light_source : static_lights_) {
+    for (const auto& light_source : static_lights_) {
         light_area.emplace_back(light_source, process(light_source));
     }
     if (!light_source_.isNull()) {
         light_area.emplace_back(light_source_, process(light_source_));
     }
     return light_area;
+}
+
+void Controller::FinishPolygon() {
+    if (is_complete_) {
+        return;
+    }
+    if (polygons_.size() <= 1 || polygons_.back().GetVertices().empty()) {
+        return;
+    }
+    if (polygons_.back().GetVertices().size() == 1) {
+        polygons_.pop_back();
+        return;
+    }
+    AddVertexToLastPolygon(polygons_.back().GetVertices().front());
+    SetComplete(true);
 }
