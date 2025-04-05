@@ -4,7 +4,7 @@
 #include <QPointF>
 
 namespace misc {
-    constexpr double kEPS0 = 1;
+    constexpr double kEPS0 = 1e-2;
     constexpr double kEPS1 = 1e-4;
     constexpr double kEPS2 = 1e-9;
     constexpr double kINF = 1e6;
