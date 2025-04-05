@@ -60,7 +60,7 @@ void Controller::UpdateLastStaticLight(const QPoint& new_static_light) {
 }
 
 void Controller::SetupSatelliteLights() {
-    const double radius = 8.; 
+    const double radius = 8.;
     const int count = 6;
     std::vector<QPointF> new_satellites;
     for (int i = 0; i < count; ++i) {
@@ -116,8 +116,8 @@ std::vector<Ray> Controller::CastRays(const QPointF& light_source) const {
         const auto& vertices = polygon.GetVertices();
         for (const auto& vertex : vertices) {
             const auto ray = Ray(light_source, vertex, misc::Angle(vertex - light_source));
-            const auto ray2 = ray.Rotate(misc::kEPS2).Scale(misc::kINF);
-            const auto ray3 = ray.Rotate(-misc::kEPS2).Scale(misc::kINF);
+            const auto ray2 = ray.Rotate(misc::kEPS1).Scale(misc::kINF);
+            const auto ray3 = ray.Rotate(-misc::kEPS1).Scale(misc::kINF);
             casted_rays.emplace_back(ray);
             casted_rays.emplace_back(ray2);
             casted_rays.emplace_back(ray3);
@@ -160,7 +160,7 @@ void Controller::RemoveAdjacentRays(std::vector<Ray>* rays) {
         const auto& ray1 = rays->at(i);
         const auto& ray = filtered_rays.back();
         double distance = misc::Length(ray1.GetEnd(), ray.GetEnd());
-        if (distance > misc::kEPS1) {
+        if (distance > misc::kEPS0) {
             filtered_rays.push_back(ray1);
         }
     }
