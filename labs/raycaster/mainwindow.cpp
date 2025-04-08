@@ -16,12 +16,31 @@ void MainWindow::SetupIU() {
     // WIDGETS
     setWindowTitle("Raycaster");
     auto* central_widget = new QWidget(this);
-    auto* layout = new QVBoxLayout(central_widget);
+    auto* main_layout = new QVBoxLayout(central_widget);
+    auto* top_layout = new QHBoxLayout(central_widget);
+
     canvas_ = new Canvas(this);
 
     mode_selector_ = new QComboBox(this);
     mode_selector_->addItems({"Light", "Polygon", "Static Light"});
     mode_selector_->setCurrentIndex(0);
+    mode_selector_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+
+    fps_label_ = new QLabel("FPS: 0", this);
+    fps_label_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    fps_label_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    
+    fps_timer_ = new QTimer(this);
+    fps_timer_->start(1000);
+
+    top_layout->addWidget(mode_selector_, 1, Qt::AlignLeft);
+    top_layout->addWidget(fps_label_, 1, Qt::AlignRight);
+
+
+    main_layout->addLayout(top_layout);
+    main_layout->addWidget(canvas_);
+
+    setCentralWidget(central_widget);
 
     QMenuBar* menu_bar = menuBar();
     QMenu* file_menu = menu_bar->addMenu("File");
@@ -30,17 +49,12 @@ void MainWindow::SetupIU() {
     QAction* complete_action = file_menu->addAction("Complete Polygon (ctrl + tab)");
     complete_action->setShortcut(QKeySequence("Ctrl+Tab"));
 
-    // DESIGN
-    layout->addWidget(mode_selector_);
-    layout->addWidget(canvas_);
-
-    setCentralWidget(central_widget);
-
     // CONNECTIONS
     connect(mode_selector_, &QComboBox::currentIndexChanged, this, &MainWindow::OnModeChanged);
     connect(mode_selector_, &QComboBox::currentIndexChanged, this, &MainWindow::OnFinishPolygon);
     connect(reset_action, &QAction::triggered, this, &MainWindow::OnCanvasReset);
     connect(complete_action, &QAction::triggered, this, &MainWindow::OnFinishPolygon);
+    connect(fps_timer_, &QTimer::timeout, this, &MainWindow::UpdateFPS);
 }
 
 void MainWindow::OnModeChanged() {
@@ -73,5 +87,10 @@ void MainWindow::OnCanvasReset() {
 void MainWindow::OnFinishPolygon() {
     canvas_->GetController()->FinishPolygon();
     canvas_->update();
+}
+
+void MainWindow::UpdateFPS() {
+    int frame_count = canvas_->TakeFrameCount();
+    fps_label_->setText(QString("FPS: %1").arg(frame_count));
 }
 // NOLINTEND(cppcoreguidelines-owning-memory)

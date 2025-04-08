@@ -77,6 +77,7 @@ void DrawLights(QPainter& painter, Controller* controller) {
 };  // namespace
 
 void Canvas::paintEvent(QPaintEvent* event) {
+    frame_count_++;
     Q_UNUSED(event);
     QPainter painter(this);
     painter.setRenderHints(QPainter::Antialiasing);
@@ -86,6 +87,12 @@ void Canvas::paintEvent(QPaintEvent* event) {
     DrawLightArea(painter, controller_.get());
     DrawPolygons(painter, controller_.get());
     DrawLights(painter, controller_.get());
+}
+
+int Canvas::TakeFrameCount() {
+    int count = frame_count_;
+    frame_count_ = 0;
+    return count;
 }
 
 Canvas::Canvas(QWidget* parent) : QWidget(parent) {

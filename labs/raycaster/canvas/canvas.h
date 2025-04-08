@@ -32,11 +32,13 @@ class Canvas : public QWidget {
     void SetController(std::unique_ptr<Controller> controller);
     void UpdateBorder(const QRect& rect);
     void ResetCanvas();
+    int TakeFrameCount();
     [[nodiscard]] Controller* GetController() const;
 
    private:
     std::unique_ptr<Controller> controller_;
     std::unique_ptr<CanvasMode> current_mode_;
+    int frame_count_ = 0;
 };
 
 class LightMode : public CanvasMode {
