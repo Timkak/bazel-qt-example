@@ -7,7 +7,6 @@ qt_cc_library(
         "translationexercise.cpp",
         "grammarexercise.cpp",
         "settingsdialog.cpp",
-        "exercisedata.cpp",
     ],
     hdrs = [
         "mainwindow.h",
