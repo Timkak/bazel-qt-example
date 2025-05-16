@@ -9,6 +9,7 @@
 #include <QLabel>
 #include <QMainWindow>
 #include <QProgressBar>
+#include <QShortcut>
 #include <QSoundEffect>
 #include <QStackedWidget>
 #include <QTimer>
@@ -57,6 +58,7 @@ class MainWindow : public QMainWindow {
     void concludeExerciseSession(bool wasSuccessful, const QString& conclusionMessage);
     void updatePlayerScoreDisplay();
     void resetApplicationToIdleState();
+    void showHelp();
 
     static int calculateLevenshteinDistance(const QString& s1, const QString& s2);
     const double LEVENSHTEIN_SIMILARITY_THRESHOLD = 0.20;
@@ -92,6 +94,8 @@ class MainWindow : public QMainWindow {
     QLabel* currentScoreLabel;
     QLabel* remainingTimeLabel;
     QLabel* userNotificationLabel;
+    
+    QShortcut* helpShortcut;
 
     Difficulty currentDifficultyLevel;
     ExerciseType activeExerciseType;

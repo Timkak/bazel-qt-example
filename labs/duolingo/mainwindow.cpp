@@ -22,6 +22,7 @@
 #include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
+#include <QShortcut>
 #include <algorithm>
 #include <vector>
 
@@ -89,6 +90,8 @@ MainWindow::MainWindow(QWidget* parent)
     createMainLayout();
     updatePlayerScoreDisplay();
     resetApplicationToIdleState();
+    helpShortcut = new QShortcut(QKeySequence(Qt::Key_H), this);
+    connect(helpShortcut, &QShortcut::activated, this, &MainWindow::showHelp);
 
     exerciseSessionTimer = new QTimer(this);
     connect(exerciseSessionTimer, &QTimer::timeout, this, &MainWindow::updateTimer);
@@ -158,6 +161,10 @@ void MainWindow::createMenus() {
     changeDifficultyAction = new QAction(tr("&Change Difficulty..."), this);
     connect(changeDifficultyAction, &QAction::triggered, this, &MainWindow::openSettingsDialog);
     settingsMenu->addAction(changeDifficultyAction);
+    QMenu *helpMenu = menuBar()->addMenu(tr("&Help"));
+    QAction *aboutAction = new QAction(tr("Show &Help"), this);
+    connect(aboutAction, &QAction::triggered, this, &MainWindow::showHelp);
+    helpMenu->addAction(aboutAction);
 }
 
 void MainWindow::createMainLayout() {
@@ -718,4 +725,9 @@ void MainWindow::resetApplicationToIdleState() {
         userNotificationLabel->setStyleSheet(
             "background-color: #eaf2f8; border-radius: 5px; padding: 5px; color: #34495e;");
     }
+}
+
+void MainWindow::showHelp() {
+    QString helpText = "У тебя всё получится! Ла-ла-ла-ла";
+    QMessageBox::information(this, tr("Help"), helpText);
 }
