@@ -148,7 +148,7 @@ void MainWindow::setupExercise(ExerciseType type) {
             return;
         }
         currentTranslationSet = ExerciseData::translationTasks[currentDifficulty];
-        std::shuffle(currentTranslationSet.begin(), currentTranslationSet.end(), QRandomGenerator::global());
+        std::shuffle(currentTranslationSet.begin(), currentTranslationSet.end(), *QRandomGenerator::global());
         if (currentTranslationSet.size() > TOTAL_TASKS_PER_EXERCISE) {
             currentTranslationSet.resize(TOTAL_TASKS_PER_EXERCISE);
         } else if (currentTranslationSet.isEmpty()){
@@ -166,7 +166,7 @@ void MainWindow::setupExercise(ExerciseType type) {
             return;
         }
         currentGrammarSet = ExerciseData::grammarTasks[currentDifficulty];
-        std::shuffle(currentGrammarSet.begin(), currentGrammarSet.end(), QRandomGenerator::global());
+        std::shuffle(currentGrammarSet.begin(), currentGrammarSet.end(), *QRandomGenerator::global());
          if (currentGrammarSet.size() > TOTAL_TASKS_PER_EXERCISE) {
             currentGrammarSet.resize(TOTAL_TASKS_PER_EXERCISE);
         } else if (currentGrammarSet.isEmpty()){
