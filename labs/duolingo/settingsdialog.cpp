@@ -1,5 +1,3 @@
-// NOLINTBEGIN(readability-identifier-naming, cppcoreguidelines-owning-memory)
-
 #include "settingsdialog.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -8,18 +6,31 @@
 #include <QLabel>
 
 SettingsDialog::SettingsDialog(Difficulty currentDifficulty, QWidget *parent)
-    : QDialog(parent), difficultyComboBox(new QComboBox()), m_currentDifficulty(currentDifficulty) {
-    setWindowTitle(tr("Settings"));
+    : QDialog(parent), m_currentDifficulty(currentDifficulty) {
+    setWindowTitle(tr("Difficulty Settings"));
+    // Set a distinct background for the dialog to ensure contrast
+    // or rely on default dialog styling which is usually fine.
+    // this->setStyleSheet("QDialog { background-color: #eaf2f8; } " // Light blue, often contrasts well
+    //                     "QLabel { color: #2c3e50; }");            // Dark text for labels
 
-    auto *mainLayout = new QVBoxLayout(this);
+    // If the issue is specific to this dialog and not global styling problems,
+    // styling just the label might be enough.
+    // Let's assume for now the default dialog background is okay and just ensure label color.
 
-    auto *difficultyLabel = new QLabel(tr("Select Difficulty:"));
-    
-    difficultyComboBox->addItem(tr("Easy"), QVariant::fromValue(Difficulty::Easy));
-    difficultyComboBox->addItem(tr("Medium"), QVariant::fromValue(Difficulty::Medium));
-    difficultyComboBox->addItem(tr("Hard"), QVariant::fromValue(Difficulty::Hard));
+    QVBoxLayout *mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(15, 15, 15, 15);
+    mainLayout->setSpacing(10);
 
-    // Set current difficulty in combobox
+    QLabel *difficultyLabel = new QLabel(tr("Select Difficulty Level:"));
+    difficultyLabel->setStyleSheet("color: #34495e; font-weight: bold;"); // Ensure dark text
+
+    difficultyComboBox = new QComboBox();
+    difficultyComboBox->addItem(tr("Easy Peasy"), QVariant::fromValue(Difficulty::Easy));
+    difficultyComboBox->addItem(tr("Getting Tricky"), QVariant::fromValue(Difficulty::Medium));
+    difficultyComboBox->addItem(tr("Brain Buster"), QVariant::fromValue(Difficulty::Hard));
+    difficultyComboBox->setStyleSheet("QComboBox { padding: 5px; border: 1px solid #bdc3c7; border-radius: 3px; }");
+
+
     int currentIndex = 0;
     switch(currentDifficulty) {
         case Difficulty::Easy: currentIndex = 0; break;
@@ -28,10 +39,17 @@ SettingsDialog::SettingsDialog(Difficulty currentDifficulty, QWidget *parent)
     }
     difficultyComboBox->setCurrentIndex(currentIndex);
 
-
     QHBoxLayout *buttonLayout = new QHBoxLayout();
-    okButton = new QPushButton(tr("OK"));
+    okButton = new QPushButton(tr("Apply"));
     cancelButton = new QPushButton(tr("Cancel"));
+
+    // Consistent button styling for dialog buttons too
+    QString dialogButtonStyle = "QPushButton { background-color: #5dade2; color: white; border: none; padding: 8px 15px; border-radius: 5px; }"
+                                "QPushButton:hover { background-color: #3498db; }";
+    okButton->setStyleSheet(dialogButtonStyle);
+    cancelButton->setStyleSheet("QPushButton { background-color: #e74c3c; color: white; border: none; padding: 8px 15px; border-radius: 5px; }" // Red for cancel
+                              "QPushButton:hover { background-color: #c0392b; }");
+
 
     buttonLayout->addStretch();
     buttonLayout->addWidget(okButton);
@@ -46,9 +64,9 @@ SettingsDialog::SettingsDialog(Difficulty currentDifficulty, QWidget *parent)
     connect(cancelButton, &QPushButton::clicked, this, &SettingsDialog::reject);
 
     setLayout(mainLayout);
+    // setFixedSize(350, 180); // Optional: give dialog a fixed pleasant size
 }
 
 Difficulty SettingsDialog::selectedDifficulty() const {
     return difficultyComboBox->currentData().value<Difficulty>();
 }
-// NOLINTEND(readability-identifier-naming, cppcoreguidelines-owning-memory)

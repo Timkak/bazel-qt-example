@@ -1,5 +1,11 @@
 load("@rules_qt//:qt.bzl", "qt_cc_binary", "qt_cc_library")
 
+filegroup(
+    name = "data_files",
+    srcs = glob(["data/**"]),
+)
+
+
 qt_cc_library(
     name = "mainwindow",
     srcs = [
@@ -7,6 +13,7 @@ qt_cc_library(
         "translationexercise.cpp",
         "grammarexercise.cpp",
         "settingsdialog.cpp",
+        "multicorrectgrammarexercise.cpp",
     ],
     hdrs = [
         "mainwindow.h",
@@ -14,6 +21,7 @@ qt_cc_library(
         "grammarexercise.h",
         "settingsdialog.h",
         "exercisedata.h",
+        "multicorrectgrammarexercise.h",
     ],
     deps = [
         "@rules_qt//:qt_core",
@@ -21,6 +29,7 @@ qt_cc_library(
         "@rules_qt//:qt_widgets",
         "@rules_qt//:qt_multimedia",
     ],
+    data = [":data_files"],
 )
 
 qt_cc_binary(
@@ -28,6 +37,5 @@ qt_cc_binary(
     srcs = ["main.cpp"],
     deps = [
         ":mainwindow",
-        "@rules_qt//:qt_widgets",
     ],
 )

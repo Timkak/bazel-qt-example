@@ -1,56 +1,57 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
-// NOLINTBEGIN(readability-identifier-naming)
 
-#include <QMainWindow>
-#include <QStackedWidget>
+#include "exercisedata.h"
+#include "grammarexercise.h"
+#include "multicorrectgrammarexercise.h"
+#include "translationexercise.h"
+
 #include <QLabel>
+#include <QMainWindow>
 #include <QProgressBar>
+#include <QShortcut>
+#include <QSoundEffect>
+#include <QStackedWidget>
 #include <QTimer>
 #include <QVector>
-#include <QShortcut> // For 'H' key
-
-#include "translationexercise.h"
-#include "grammarexercise.h"
-#include "exercisedata.h"
 
 QT_BEGIN_NAMESPACE
 class QAction;
 class QMenu;
+class QPushButton;
 QT_END_NAMESPACE
 
-const int TOTAL_TASKS_PER_EXERCISE = 3; // N
-const int MAX_MISTAKES_ALLOWED = 2;   // M
-const int EXERCISE_TIME_SECONDS = 120; // 2 minutes per exercise set
+const int TOTAL_TASKS_PER_EXERCISE = 3;
+const int MAX_MISTAKES_ALLOWED = 2;
+const int EXERCISE_TIME_SECONDS = 120;
 
-enum class ExerciseType {
-    None,
-    Translation,
-    Grammar
-};
+enum class ExerciseType { None, Translation, GrammarSingle, GrammarMulti };
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
-public:
-    MainWindow(QWidget *parent = nullptr);
+   public:
+    MainWindow(QWidget* parent = nullptr);
     ~MainWindow();
 
-protected:
-    void keyPressEvent(QKeyEvent *event) override;
+   protected:
+    void keyPressEvent(QKeyEvent* event) override;
 
-
-private slots:
+   private slots:
     void openSettingsDialog();
     void startTranslationExercise();
-    void startGrammarExercise();
+    void startGrammarSingleExercise();
+    void startGrammarMultiExercise();
     void handleTranslationSubmit();
-    void handleGrammarSubmit();
+    void handleGrammarSingleSubmit();
+    void handleGrammarMultiSubmit();
     void updateTimer();
     void exerciseTimeUp();
     void showHelp();
+    void stopCurrentExercise();
+    void onMeditateButtonClicked();
 
-private:
+   private:
     void createMenus();
     void createMainLayout();
     void setupExercise(ExerciseType type);
@@ -60,42 +61,55 @@ private:
     void resetExerciseState();
     QString getCurrentHelpText() const;
 
+    static int levenshteinDistance(const QString& s1, const QString& s2);
+    const double LEVENSHTEIN_TOLERANCE_PERCENT = 0.20;
 
-    // Menu
-    QMenu *settingsMenu;
-    QAction *changeDifficultyAction;
-    QAction *helpAction; // Though 'H' key is primary
+    void setFeedbackStyle(QLabel* label, bool correct);
 
-    // Main Layout
-    QWidget *centralWidgetContainer;
-    QStackedWidget *stackedWidget;
-    QLabel *welcomeLabel;
-    TranslationExerciseWidget *translationWidget;
-    GrammarExerciseWidget *grammarWidget;
+    void loadSounds();
+    void playSound(QSoundEffect* sound, bool loop = false);
+    QSoundEffect* correctSound;
+    QSoundEffect* incorrectSound;
+    QSoundEffect* exerciseStartSound;
+    QSoundEffect* timeUpSound;
+    QSoundEffect* bootUpSound;
+    QSoundEffect* meditateSound;
 
-    // Controls & Info
-    QPushButton *translationButton;
-    QPushButton *grammarButton;
-    QProgressBar *progressBar;
-    QLabel *scoreLabel;
-    QLabel *timerLabel;
-    QLabel *statusLabel; // General feedback
+    QMenu* settingsMenu;
+    QAction* changeDifficultyAction;
+    QAction* helpAction;
 
-    // Exercise State
+    QWidget* centralWidgetContainer;
+    QStackedWidget* stackedWidget;
+    QLabel* welcomeLabel;
+    TranslationExerciseWidget* translationWidget;
+    GrammarExerciseWidget* grammarSingleWidget;
+    MultiCorrectGrammarExerciseWidget* grammarMultiWidget;
+
+    QPushButton* translationButton;
+    QPushButton* grammarSingleButton;
+    QPushButton* grammarMultiButton;
+    QPushButton* stopExerciseButton;
+    QPushButton* meditateButton;
+    QProgressBar* progressBar;
+    QLabel* scoreLabel;
+    QLabel* timerLabel;
+    QLabel* statusLabel;
+
     Difficulty currentDifficulty;
     ExerciseType currentExerciseType;
     int tasksCompleted;
     int currentMistakes;
     int totalScore;
-    QTimer *exerciseTimer;
+    QTimer* exerciseTimer;
     int timeRemaining;
 
     QVector<TranslationTask> currentTranslationSet;
-    QVector<GrammarTask> currentGrammarSet;
+    QVector<GrammarTask> currentGrammarSingleSet;
+    QVector<MultiCorrectGrammarTask> currentGrammarMultiSet;
     int currentTaskIndex;
 
-    QShortcut *helpShortcut;
+    QShortcut* helpShortcut;
 };
-// NOLINTEND(readability-identifier-naming)
 
-#endif // MAINWINDOW_H
+#endif

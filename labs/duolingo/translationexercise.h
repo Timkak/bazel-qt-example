@@ -1,34 +1,35 @@
 #ifndef TRANSLATIONEXERCISE_H
 #define TRANSLATIONEXERCISE_H
 
-#include <QWidget>
-#include <QLineEdit>
-#include <QLabel>
-#include <QPushButton>
 #include "exercisedata.h"
+
+#include <QLabel>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QWidget>
 
 class TranslationExerciseWidget : public QWidget {
     Q_OBJECT
 
-public:
-    explicit TranslationExerciseWidget(QWidget *parent = nullptr);
+   public:
+    explicit TranslationExerciseWidget(QWidget* parent = nullptr);
     void setTask(const TranslationTask& task);
-    QString getUserAnswer() const;
+    [[nodiscard]] QString getUserAnswer() const;
     void clearAnswer();
-    void showCorrectAnswer(const QString& correctAnswer); // For showing after attempts exhausted
+    void showCorrectAnswer(const QString& correctAnswer);
 
-signals:
+   signals:
     void submitClicked();
-    void helpRequested(); // Emitted when user might need help
+    void helpRequested();
 
-private:
-    QLabel *instructionLabel;
-    QLabel *sentenceLabel;
-    QLineEdit *answerEdit;
-    QPushButton *submitButton;
-    QLabel *feedbackLabel; // To show "Correct!" or "Try again" or the correct answer
+   private:
+    QLabel* instructionLabel;
+    QLabel* sentenceLabel;
+    QLineEdit* answerEdit;
+    QPushButton* submitButton;
+    QLabel* feedbackLabel;
 
     QString currentCorrectAnswer;
 };
 
-#endif // TRANSLATIONEXERCISE_H
+#endif
