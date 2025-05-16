@@ -9,7 +9,6 @@
 #include <QLabel>
 #include <QMainWindow>
 #include <QProgressBar>
-#include <QShortcut>
 #include <QSoundEffect>
 #include <QStackedWidget>
 #include <QTimer>
@@ -35,7 +34,7 @@ class MainWindow : public QMainWindow {
     ~MainWindow();
 
    protected:
-    void keyPressEvent(QKeyEvent* event) override;
+    void showEvent(QShowEvent* event) override;
 
    private slots:
     void openSettingsDialog();
@@ -47,69 +46,65 @@ class MainWindow : public QMainWindow {
     void handleGrammarMultiSubmit();
     void updateTimer();
     void exerciseTimeUp();
-    void showHelp();
     void stopCurrentExercise();
     void onMeditateButtonClicked();
 
    private:
     void createMenus();
     void createMainLayout();
-    void setupExercise(ExerciseType type);
-    void nextTask();
-    void endExercise(bool success, const QString& message);
-    void updateScoreDisplay();
-    void resetExerciseState();
-    QString getCurrentHelpText() const;
+    void setupNewExerciseSet(ExerciseType type);
+    void presentNextTask();
+    void concludeExerciseSession(bool wasSuccessful, const QString& conclusionMessage);
+    void updatePlayerScoreDisplay();
+    void resetApplicationToIdleState();
 
-    static int levenshteinDistance(const QString& s1, const QString& s2);
-    const double LEVENSHTEIN_TOLERANCE_PERCENT = 0.20;
+    static int calculateLevenshteinDistance(const QString& s1, const QString& s2);
+    const double LEVENSHTEIN_SIMILARITY_THRESHOLD = 0.20;
 
-    void setFeedbackStyle(QLabel* label, bool correct);
+    void applyFeedbackStyleToLabel(QLabel* label, bool isCorrect);
 
-    void loadSounds();
-    void playSound(QSoundEffect* sound, bool loop = false);
-    QSoundEffect* correctSound;
-    QSoundEffect* incorrectSound;
-    QSoundEffect* exerciseStartSound;
-    QSoundEffect* timeUpSound;
-    QSoundEffect* bootUpSound;
-    QSoundEffect* meditateSound;
+    void initializeSounds();
+    void playSoundEffect(QSoundEffect* sound, bool shouldLoop = false);
+
+    QSoundEffect* correctAnswerSound;
+    QSoundEffect* incorrectAnswerSound;
+    QSoundEffect* exerciseStartCue;
+    QSoundEffect* timerExpiredSound;
+    QSoundEffect* applicationStartSound;
+    QSoundEffect* meditationAudio;
 
     QMenu* settingsMenu;
     QAction* changeDifficultyAction;
-    QAction* helpAction;
 
     QWidget* centralWidgetContainer;
-    QStackedWidget* stackedWidget;
-    QLabel* welcomeLabel;
-    TranslationExerciseWidget* translationWidget;
-    GrammarExerciseWidget* grammarSingleWidget;
-    MultiCorrectGrammarExerciseWidget* grammarMultiWidget;
+    QStackedWidget* exerciseDisplayArea;
+    QLabel* welcomeMessageLabel;
+    TranslationExerciseWidget* translationExerciseWidget;
+    GrammarExerciseWidget* grammarSingleChoiceExerciseWidget;
+    MultiCorrectGrammarExerciseWidget* grammarMultiChoiceExerciseWidget;
 
-    QPushButton* translationButton;
-    QPushButton* grammarSingleButton;
-    QPushButton* grammarMultiButton;
-    QPushButton* stopExerciseButton;
-    QPushButton* meditateButton;
-    QProgressBar* progressBar;
-    QLabel* scoreLabel;
-    QLabel* timerLabel;
-    QLabel* statusLabel;
+    QPushButton* translationModeButton;
+    QPushButton* grammarSingleModeButton;
+    QPushButton* grammarMultiModeButton;
+    QPushButton* stopCurrentExerciseButton;
+    QPushButton* meditationToggleButton;
+    QProgressBar* taskProgressBar;
+    QLabel* currentScoreLabel;
+    QLabel* remainingTimeLabel;
+    QLabel* userNotificationLabel;
 
-    Difficulty currentDifficulty;
-    ExerciseType currentExerciseType;
-    int tasksCompleted;
-    int currentMistakes;
-    int totalScore;
-    QTimer* exerciseTimer;
-    int timeRemaining;
+    Difficulty currentDifficultyLevel;
+    ExerciseType activeExerciseType;
+    int tasksCompletedInSet;
+    int mistakesMadeInSet;
+    int totalPlayerScore;
+    QTimer* exerciseSessionTimer;
+    int secondsRemainingInSession;
 
-    QVector<TranslationTask> currentTranslationSet;
-    QVector<GrammarTask> currentGrammarSingleSet;
-    QVector<MultiCorrectGrammarTask> currentGrammarMultiSet;
-    int currentTaskIndex;
-
-    QShortcut* helpShortcut;
+    QVector<TranslationTask> currentTranslationTaskSet;
+    QVector<GrammarTask> currentGrammarSingleTaskSet;
+    QVector<MultiCorrectGrammarTask> currentGrammarMultiTaskSet;
+    int currentTaskIndexInSet;
 };
 
 #endif

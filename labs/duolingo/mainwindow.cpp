@@ -16,16 +16,16 @@
 #include <QProgressBar>
 #include <QPushButton>
 #include <QRandomGenerator>
-#include <QShortcut>
 #include <QShowEvent>
 #include <QSoundEffect>
 #include <QStackedWidget>
 #include <QTimer>
 #include <QUrl>
 #include <QVBoxLayout>
+#include <algorithm>
 #include <vector>
 
-int MainWindow::levenshteinDistance(const QString& s1_in, const QString& s2_in) {
+int MainWindow::calculateLevenshteinDistance(const QString& s1_in, const QString& s2_in) {
     QString s1 = s1_in.trimmed().toLower();
     QString s2 = s2_in.trimmed().toLower();
     const int len1 = s1.length();
@@ -52,14 +52,14 @@ int MainWindow::levenshteinDistance(const QString& s1_in, const QString& s2_in) 
     return d[len1][len2];
 }
 
-void MainWindow::setFeedbackStyle(QLabel* label, bool correct) {
+void MainWindow::applyFeedbackStyleToLabel(QLabel* label, bool isCorrect) {
     if (!label) {
         return;
     }
     QFont feedbackFont = label->font();
     feedbackFont.setBold(true);
     label->setFont(feedbackFont);
-    if (correct) {
+    if (isCorrect) {
         label->setStyleSheet(
             "color: #27ae60; padding: 5px; background-color: #e8f8f5; border-radius: 3px;");
     } else {
@@ -70,74 +70,86 @@ void MainWindow::setFeedbackStyle(QLabel* label, bool correct) {
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
-    , currentDifficulty(Difficulty::Easy)
-    , currentExerciseType(ExerciseType::None)
-    , tasksCompleted(0)
-    , currentMistakes(0)
-    , totalScore(0)
-    , currentTaskIndex(0)
-    , correctSound(new QSoundEffect(this))
-    , incorrectSound(new QSoundEffect(this))
-    , exerciseStartSound(new QSoundEffect(this))
-    , timeUpSound(new QSoundEffect(this))
-    , bootUpSound(new QSoundEffect(this))
-    , meditateSound(new QSoundEffect(this)) {
+    , currentDifficultyLevel(Difficulty::Easy)
+    , activeExerciseType(ExerciseType::None)
+    , tasksCompletedInSet(0)
+    , mistakesMadeInSet(0)
+    , totalPlayerScore(0)
+    , currentTaskIndexInSet(0)
+    , correctAnswerSound(new QSoundEffect(this))
+    , incorrectAnswerSound(new QSoundEffect(this))
+    , exerciseStartCue(new QSoundEffect(this))
+    , timerExpiredSound(new QSoundEffect(this))
+    , applicationStartSound(new QSoundEffect(this))
+    , meditationAudio(new QSoundEffect(this)) {
     setWindowTitle(tr("LinguaLearn Quest"));
     ExerciseData::initializeData();
 
     createMenus();
     createMainLayout();
-    updateScoreDisplay();
-    resetExerciseState();
+    updatePlayerScoreDisplay();
+    resetApplicationToIdleState();
 
-    exerciseTimer = new QTimer(this);
-    connect(exerciseTimer, &QTimer::timeout, this, &MainWindow::updateTimer);
+    exerciseSessionTimer = new QTimer(this);
+    connect(exerciseSessionTimer, &QTimer::timeout, this, &MainWindow::updateTimer);
 
-    helpShortcut = new QShortcut(QKeySequence(Qt::Key_H), this);
-    connect(helpShortcut, &QShortcut::activated, this, &MainWindow::showHelp);
-
-    loadSounds();
-
+    initializeSounds();
     resize(850, 650);
 }
 
 MainWindow::~MainWindow() {
 }
 
-void MainWindow::keyPressEvent(QKeyEvent* event) {
-    QMainWindow::keyPressEvent(event);
+void MainWindow::showEvent(QShowEvent* event) {
+    QMainWindow::showEvent(event);
+    static bool appStartSoundPlayed = false;
+    if (!appStartSoundPlayed && applicationStartSound && applicationStartSound->isLoaded()) {
+        playSoundEffect(applicationStartSound);
+        appStartSoundPlayed = true;
+    }
 }
 
-void MainWindow::loadSounds() {
+void MainWindow::initializeSounds() {
     QString soundPathPrefix = "labs/duolingo/data/";
 
-    bootUpSound->setSource(QUrl::fromLocalFile(soundPathPrefix + "boot_up.wav"));
-    correctSound->setSource(QUrl::fromLocalFile(soundPathPrefix + "correct.wav"));
-    incorrectSound->setSource(QUrl::fromLocalFile(soundPathPrefix + "incorrect.wav"));
-    exerciseStartSound->setSource(QUrl::fromLocalFile(soundPathPrefix + "exercise_start.wav"));
-    timeUpSound->setSource(QUrl::fromLocalFile(soundPathPrefix + "time_up.wav"));
-    meditateSound->setSource(QUrl::fromLocalFile(soundPathPrefix + "meditation.wav"));
+
+    applicationStartSound->setSource(QUrl::fromLocalFile(soundPathPrefix + "boot_up.wav"));
+    correctAnswerSound->setSource(QUrl::fromLocalFile(soundPathPrefix + "correct.wav"));
+    incorrectAnswerSound->setSource(QUrl::fromLocalFile(soundPathPrefix + "incorrect.wav"));
+    exerciseStartCue->setSource(QUrl::fromLocalFile(soundPathPrefix + "exercise_start.wav"));
+    timerExpiredSound->setSource(QUrl::fromLocalFile(soundPathPrefix + "time_up.wav"));
+    meditationAudio->setSource(QUrl::fromLocalFile(soundPathPrefix + "meditation.wav"));
+
+    auto checkLoad = [](QSoundEffect* sfx, const QString& name) {
+        if (!sfx->isLoaded()) {
+            qWarning() << "Sound Load Fail:" << name << "from" << sfx->source().toString();
+        }
+    };
+    checkLoad(applicationStartSound, "boot_up.wav");
+    checkLoad(correctAnswerSound, "correct.wav");
+    checkLoad(incorrectAnswerSound, "incorrect.wav");
+    checkLoad(exerciseStartCue, "exercise_start.wav");
+    checkLoad(timerExpiredSound, "time_up.wav");
+    checkLoad(meditationAudio, "meditation.wav");
 
     float volume = 0.6f;
-    bootUpSound->setVolume(volume * 0.7f);
-    correctSound->setVolume(0.5 * volume);
-    incorrectSound->setVolume(volume);
-    exerciseStartSound->setVolume(volume * 0.8f);
-    timeUpSound->setVolume(volume);
-    meditateSound->setVolume(volume * 0.5f);
+    applicationStartSound->setVolume(volume * 0.7f);
+    correctAnswerSound->setVolume(volume);
+    incorrectAnswerSound->setVolume(volume);
+    exerciseStartCue->setVolume(volume * 0.8f);
+    timerExpiredSound->setVolume(volume);
+    meditationAudio->setVolume(volume * 0.5f);
 }
 
-void MainWindow::playSound(QSoundEffect* sound, bool loop) {
+void MainWindow::playSoundEffect(QSoundEffect* sound, bool shouldLoop) {
     if (sound && sound->isLoaded()) {
         if (sound->isPlaying()) {
             sound->stop();
         }
-        sound->setLoopCount(loop ? QSoundEffect::Infinite : 1);
+        sound->setLoopCount(shouldLoop ? QSoundEffect::Infinite : 1);
         sound->play();
     } else if (sound) {
-        qWarning() << "Sound not loaded or null, cannot play:" << sound->source().toString();
-    } else {
-        qWarning() << "Attempted to play a null QSoundEffect pointer.";
+        qWarning() << "Sound not loaded/null, cannot play:" << sound->source().toString();
     }
 }
 
@@ -146,11 +158,6 @@ void MainWindow::createMenus() {
     changeDifficultyAction = new QAction(tr("&Change Difficulty..."), this);
     connect(changeDifficultyAction, &QAction::triggered, this, &MainWindow::openSettingsDialog);
     settingsMenu->addAction(changeDifficultyAction);
-
-    QMenu* helpMenu = menuBar()->addMenu(tr("&Help"));
-    helpAction = new QAction(tr("Show &Help (H)"), this);
-    connect(helpAction, &QAction::triggered, this, &MainWindow::showHelp);
-    helpMenu->addAction(helpAction);
 }
 
 void MainWindow::createMainLayout() {
@@ -160,308 +167,306 @@ void MainWindow::createMainLayout() {
     mainVLayout->setSpacing(10);
 
     QHBoxLayout* topControlsLayout = new QHBoxLayout();
-    translationButton = new QPushButton(tr("📚 Translation"));
-    grammarSingleButton = new QPushButton(tr("✍️ Grammar (Single)"));
-    grammarMultiButton = new QPushButton(tr("✅ Grammar (Multi)"));
+    translationModeButton = new QPushButton(tr("📚 Translation"));
+    grammarSingleModeButton = new QPushButton(tr("✍️ Grammar (Single)"));
+    grammarMultiModeButton = new QPushButton(tr("✅ Grammar (Multi)"));
 
     QString exerciseButtonStyle =
         "QPushButton { background-color: #5dade2; color: white; border: none; padding: 10px; "
         "border-radius: 5px; min-width: 160px; font-weight: bold;}"
         "QPushButton:hover { background-color: #3498db; }"
         "QPushButton:disabled { background-color: #aed6f1; }";
-    translationButton->setStyleSheet(exerciseButtonStyle);
-    grammarSingleButton->setStyleSheet(exerciseButtonStyle);
-    grammarMultiButton->setStyleSheet(exerciseButtonStyle);
+    translationModeButton->setStyleSheet(exerciseButtonStyle);
+    grammarSingleModeButton->setStyleSheet(exerciseButtonStyle);
+    grammarMultiModeButton->setStyleSheet(exerciseButtonStyle);
 
-    topControlsLayout->addWidget(translationButton);
-    topControlsLayout->addWidget(grammarSingleButton);
-    topControlsLayout->addWidget(grammarMultiButton);
+    topControlsLayout->addWidget(translationModeButton);
+    topControlsLayout->addWidget(grammarSingleModeButton);
+    topControlsLayout->addWidget(grammarMultiModeButton);
     topControlsLayout->addStretch(1);
 
-    meditateButton = new QPushButton(tr("🧘 Meditate"));
-    meditateButton->setStyleSheet(
+    meditationToggleButton = new QPushButton(tr("🧘 Meditate"));
+    meditationToggleButton->setStyleSheet(
         "QPushButton { background-color: #1abc9c; color: white; border: none; padding: 10px; "
         "border-radius: 5px; min-width: 120px; font-weight: bold;}"
         "QPushButton:hover { background-color: #16a085; }");
-    meditateButton->setCursor(Qt::PointingHandCursor);
-    meditateButton->setCheckable(true);
-    topControlsLayout->addWidget(meditateButton);
+    meditationToggleButton->setCursor(Qt::PointingHandCursor);
+    meditationToggleButton->setCheckable(true);
+    topControlsLayout->addWidget(meditationToggleButton);
     topControlsLayout->addSpacing(10);
 
-    stopExerciseButton = new QPushButton(tr("Stop Exercise"));
-    stopExerciseButton->setStyleSheet(
+    stopCurrentExerciseButton = new QPushButton(tr("🚫 Stop Exercise"));
+    stopCurrentExerciseButton->setStyleSheet(
         "QPushButton { background-color: #e74c3c; color: white; border: none; padding: 10px; "
         "border-radius: 5px; min-width: 120px; font-weight: bold;}"
         "QPushButton:hover { background-color: #c0392b; }"
         "QPushButton:disabled { background-color: #f5b7b1; }");
-    stopExerciseButton->setCursor(Qt::PointingHandCursor);
-    stopExerciseButton->setVisible(false);
-    topControlsLayout->addWidget(stopExerciseButton);
+    stopCurrentExerciseButton->setCursor(Qt::PointingHandCursor);
+    stopCurrentExerciseButton->setVisible(false);
+    topControlsLayout->addWidget(stopCurrentExerciseButton);
 
     QHBoxLayout* infoLayout = new QHBoxLayout();
-    progressBar = new QProgressBar();
-    progressBar->setStyleSheet(
+    taskProgressBar = new QProgressBar();
+    taskProgressBar->setStyleSheet(
         "QProgressBar { border: 1px solid grey; border-radius: 5px; text-align: center; height: "
         "20px; }"
         "QProgressBar::chunk { background-color: #52be80; width: 10px; margin: 0.5px; "
         "border-radius: 2px; }");
-    scoreLabel = new QLabel();
-    timerLabel = new QLabel();
-    QFont infoFont = scoreLabel->font();
+    currentScoreLabel = new QLabel();
+    remainingTimeLabel = new QLabel();
+    QFont infoFont = currentScoreLabel->font();
     infoFont.setBold(true);
     infoFont.setPointSize(infoFont.pointSize() + 1);
-    scoreLabel->setFont(infoFont);
-    timerLabel->setFont(infoFont);
-    scoreLabel->setStyleSheet("color: #2c3e50;");
-    timerLabel->setStyleSheet("color: #e74c3c;");
+    currentScoreLabel->setFont(infoFont);
+    remainingTimeLabel->setFont(infoFont);
+    currentScoreLabel->setStyleSheet("color: #2c3e50;");
+    remainingTimeLabel->setStyleSheet("color: #e74c3c;");
     infoLayout->addWidget(new QLabel(tr("🚀 Progress:")));
-    infoLayout->addWidget(progressBar, 1);
+    infoLayout->addWidget(taskProgressBar, 1);
     infoLayout->addSpacing(20);
     infoLayout->addWidget(new QLabel(tr("⭐ Score:")));
-    infoLayout->addWidget(scoreLabel);
+    infoLayout->addWidget(currentScoreLabel);
     infoLayout->addSpacing(20);
     infoLayout->addWidget(new QLabel(tr("⏳ Time:")));
-    infoLayout->addWidget(timerLabel);
+    infoLayout->addWidget(remainingTimeLabel);
 
-    stackedWidget = new QStackedWidget();
-    stackedWidget->setStyleSheet(
+    exerciseDisplayArea = new QStackedWidget();
+    exerciseDisplayArea->setStyleSheet(
         "QWidget { background-color: white; border-radius: 8px; padding: 10px; }");
-    welcomeLabel = new QLabel(
+    welcomeMessageLabel = new QLabel(
         tr("👋 Welcome to LinguaLearn Quest!\n\nChoose an exercise to begin your adventure."));
-    welcomeLabel->setAlignment(Qt::AlignCenter);
-    welcomeLabel->setWordWrap(true);
-    QFont welcomeFont = welcomeLabel->font();
+    welcomeMessageLabel->setAlignment(Qt::AlignCenter);
+    welcomeMessageLabel->setWordWrap(true);
+    QFont welcomeFont = welcomeMessageLabel->font();
     welcomeFont.setPointSize(18);
     welcomeFont.setBold(true);
-    welcomeLabel->setFont(welcomeFont);
-    welcomeLabel->setStyleSheet("color: #2980b9; background-color: transparent; border: none;");
-    translationWidget = new TranslationExerciseWidget();
-    grammarSingleWidget = new GrammarExerciseWidget();
-    grammarMultiWidget = new MultiCorrectGrammarExerciseWidget();
-    stackedWidget->addWidget(welcomeLabel);
-    stackedWidget->addWidget(translationWidget);
-    stackedWidget->addWidget(grammarSingleWidget);
-    stackedWidget->addWidget(grammarMultiWidget);
+    welcomeMessageLabel->setFont(welcomeFont);
+    welcomeMessageLabel->setStyleSheet(
+        "color: #2980b9; background-color: transparent; border: none;");
+    translationExerciseWidget = new TranslationExerciseWidget();
+    grammarSingleChoiceExerciseWidget = new GrammarExerciseWidget();
+    grammarMultiChoiceExerciseWidget = new MultiCorrectGrammarExerciseWidget();
+    exerciseDisplayArea->addWidget(welcomeMessageLabel);
+    exerciseDisplayArea->addWidget(translationExerciseWidget);
+    exerciseDisplayArea->addWidget(grammarSingleChoiceExerciseWidget);
+    exerciseDisplayArea->addWidget(grammarMultiChoiceExerciseWidget);
 
-    statusLabel = new QLabel(tr("Status: Ready to embark on a learning journey!"));
-    statusLabel->setAlignment(Qt::AlignCenter);
-    statusLabel->setMinimumHeight(40);
-    statusLabel->setFrameStyle(QFrame::Panel | QFrame::Sunken);
-    statusLabel->setStyleSheet(
+    userNotificationLabel = new QLabel(tr("Status: Ready to embark on a learning journey!"));
+    userNotificationLabel->setAlignment(Qt::AlignCenter);
+    userNotificationLabel->setMinimumHeight(40);
+    userNotificationLabel->setFrameStyle(QFrame::Panel | QFrame::Sunken);
+    userNotificationLabel->setStyleSheet(
         "background-color: #eaf2f8; border-radius: 5px; padding: 5px; color: #34495e;");
 
     mainVLayout->addLayout(topControlsLayout);
     mainVLayout->addLayout(infoLayout);
-    mainVLayout->addWidget(stackedWidget, 1);
-    mainVLayout->addWidget(statusLabel);
+    mainVLayout->addWidget(exerciseDisplayArea, 1);
+    mainVLayout->addWidget(userNotificationLabel);
 
     setCentralWidget(centralWidgetContainer);
 
-    connect(translationButton, &QPushButton::clicked, this, &MainWindow::startTranslationExercise);
     connect(
-        grammarSingleButton, &QPushButton::clicked, this, &MainWindow::startGrammarSingleExercise);
+        translationModeButton, &QPushButton::clicked, this, &MainWindow::startTranslationExercise);
     connect(
-        grammarMultiButton, &QPushButton::clicked, this, &MainWindow::startGrammarMultiExercise);
-    connect(stopExerciseButton, &QPushButton::clicked, this, &MainWindow::stopCurrentExercise);
-    connect(meditateButton, &QPushButton::clicked, this, &MainWindow::onMeditateButtonClicked);
+        grammarSingleModeButton, &QPushButton::clicked, this,
+        &MainWindow::startGrammarSingleExercise);
+    connect(
+        grammarMultiModeButton, &QPushButton::clicked, this,
+        &MainWindow::startGrammarMultiExercise);
+    connect(
+        stopCurrentExerciseButton, &QPushButton::clicked, this, &MainWindow::stopCurrentExercise);
+    connect(
+        meditationToggleButton, &QPushButton::clicked, this, &MainWindow::onMeditateButtonClicked);
 
     connect(
-        translationWidget, &TranslationExerciseWidget::submitClicked, this,
+        translationExerciseWidget, &TranslationExerciseWidget::submitClicked, this,
         &MainWindow::handleTranslationSubmit);
     connect(
-        grammarSingleWidget, &GrammarExerciseWidget::submitClicked, this,
+        grammarSingleChoiceExerciseWidget, &GrammarExerciseWidget::submitClicked, this,
         &MainWindow::handleGrammarSingleSubmit);
     connect(
-        grammarMultiWidget, &MultiCorrectGrammarExerciseWidget::submitClicked, this,
+        grammarMultiChoiceExerciseWidget, &MultiCorrectGrammarExerciseWidget::submitClicked, this,
         &MainWindow::handleGrammarMultiSubmit);
 }
 
 void MainWindow::openSettingsDialog() {
-    SettingsDialog dialog(currentDifficulty, this);
+    SettingsDialog dialog(currentDifficultyLevel, this);
     if (dialog.exec() == QDialog::Accepted) {
-        currentDifficulty = dialog.selectedDifficulty();
-        statusLabel->setText(tr("Difficulty level updated! Choose your challenge."));
-        setFeedbackStyle(statusLabel, true);
-        if (currentExerciseType != ExerciseType::None) {
-            endExercise(false, tr("Exercise stopped due to difficulty change."));
+        currentDifficultyLevel = dialog.selectedDifficulty();
+        userNotificationLabel->setText(tr("Difficulty level updated! Choose your challenge."));
+        applyFeedbackStyleToLabel(userNotificationLabel, true);
+        if (activeExerciseType != ExerciseType::None) {
+            concludeExerciseSession(false, tr("Exercise stopped due to difficulty change."));
         }
     }
 }
 
 void MainWindow::startTranslationExercise() {
-    currentExerciseType = ExerciseType::Translation;
-    setupExercise(ExerciseType::Translation);
+    activeExerciseType = ExerciseType::Translation;
+    setupNewExerciseSet(ExerciseType::Translation);
 }
 
 void MainWindow::startGrammarSingleExercise() {
-    currentExerciseType = ExerciseType::GrammarSingle;
-    setupExercise(ExerciseType::GrammarSingle);
+    activeExerciseType = ExerciseType::GrammarSingle;
+    setupNewExerciseSet(ExerciseType::GrammarSingle);
 }
 
 void MainWindow::startGrammarMultiExercise() {
-    currentExerciseType = ExerciseType::GrammarMulti;
-    setupExercise(ExerciseType::GrammarMulti);
+    activeExerciseType = ExerciseType::GrammarMulti;
+    setupNewExerciseSet(ExerciseType::GrammarMulti);
 }
 
-void MainWindow::setupExercise(ExerciseType type) {
-    if (meditateSound && meditateSound->isPlaying()) {
-        meditateSound->stop();
-        meditateButton->setChecked(false);
-        meditateButton->setText(tr("🧘 Meditate"));
-        meditateButton->setStyleSheet(
+void MainWindow::setupNewExerciseSet(ExerciseType type) {
+    if (meditationAudio && meditationAudio->isPlaying()) {
+        meditationAudio->stop();
+        meditationToggleButton->setChecked(false);
+        meditationToggleButton->setText(tr("🧘 Meditate"));
+        meditationToggleButton->setStyleSheet(
             "QPushButton { background-color: #1abc9c; color: white; border: none; padding: 10px; "
             "border-radius: 5px; min-width: 120px; font-weight: bold;}"
             "QPushButton:hover { background-color: #16a085; }");
     }
 
-    resetExerciseState();
-    currentExerciseType = type;
-    playSound(exerciseStartSound);
+    resetApplicationToIdleState();
+    activeExerciseType = type;
+    playSoundEffect(exerciseStartCue);
 
-    const auto& tasksForDifficultyTrans = ExerciseData::translationTasks[currentDifficulty];
-    const auto& tasksForDifficultyGrammarSingle = ExerciseData::grammarTasks[currentDifficulty];
-    const auto& tasksForDifficultyGrammarMulti = ExerciseData::multiGrammarTasks[currentDifficulty];
+    const auto& tasksForDifficultyTrans = ExerciseData::translationTasks[currentDifficultyLevel];
+    const auto& tasksForDifficultyGrammarSingle =
+        ExerciseData::grammarTasks[currentDifficultyLevel];
+    const auto& tasksForDifficultyGrammarMulti =
+        ExerciseData::multiGrammarTasks[currentDifficultyLevel];
     int tasksToLoad = 0;
 
     if (type == ExerciseType::Translation) {
         if (tasksForDifficultyTrans.isEmpty()) {
-            QMessageBox::warning(this, tr("No Tasks"), tr("Oops! No translation tasks here..."));
-            endExercise(false, "");
+            QMessageBox::warning(this, tr("No Tasks"), tr("Oops! No translation tasks..."));
+            concludeExerciseSession(false, "");
             return;
         }
-        currentTranslationSet = tasksForDifficultyTrans;
+        currentTranslationTaskSet = tasksForDifficultyTrans;
         std::shuffle(
-            currentTranslationSet.begin(), currentTranslationSet.end(),
+            currentTranslationTaskSet.begin(), currentTranslationTaskSet.end(),
             *QRandomGenerator::global());
-        if (currentTranslationSet.size() > TOTAL_TASKS_PER_EXERCISE) {
-            currentTranslationSet.resize(TOTAL_TASKS_PER_EXERCISE);
+        if (currentTranslationTaskSet.size() > TOTAL_TASKS_PER_EXERCISE) {
+            currentTranslationTaskSet.resize(TOTAL_TASKS_PER_EXERCISE);
         }
-        tasksToLoad = currentTranslationSet.size();
+        tasksToLoad = currentTranslationTaskSet.size();
     } else if (type == ExerciseType::GrammarSingle) {
         if (tasksForDifficultyGrammarSingle.isEmpty()) {
-            QMessageBox::warning(
-                this, tr("No Tasks"), tr("Hmm, no single-choice grammar tasks..."));
-            endExercise(false, "");
+            QMessageBox::warning(this, tr("No Tasks"), tr("Hmm, no single-choice tasks..."));
+            concludeExerciseSession(false, "");
             return;
         }
-        currentGrammarSingleSet = tasksForDifficultyGrammarSingle;
+        currentGrammarSingleTaskSet = tasksForDifficultyGrammarSingle;
         std::shuffle(
-            currentGrammarSingleSet.begin(), currentGrammarSingleSet.end(),
+            currentGrammarSingleTaskSet.begin(), currentGrammarSingleTaskSet.end(),
             *QRandomGenerator::global());
-        if (currentGrammarSingleSet.size() > TOTAL_TASKS_PER_EXERCISE) {
-            currentGrammarSingleSet.resize(TOTAL_TASKS_PER_EXERCISE);
+        if (currentGrammarSingleTaskSet.size() > TOTAL_TASKS_PER_EXERCISE) {
+            currentGrammarSingleTaskSet.resize(TOTAL_TASKS_PER_EXERCISE);
         }
-        tasksToLoad = currentGrammarSingleSet.size();
+        tasksToLoad = currentGrammarSingleTaskSet.size();
     } else if (type == ExerciseType::GrammarMulti) {
         if (tasksForDifficultyGrammarMulti.isEmpty()) {
-            QMessageBox::warning(
-                this, tr("No Tasks"), tr("Looks like multi-choice grammar tasks..."));
-            endExercise(false, "");
+            QMessageBox::warning(this, tr("No Tasks"), tr("Looks like no multi-choice tasks..."));
+            concludeExerciseSession(false, "");
             return;
         }
-        currentGrammarMultiSet = tasksForDifficultyGrammarMulti;
+        currentGrammarMultiTaskSet = tasksForDifficultyGrammarMulti;
         std::shuffle(
-            currentGrammarMultiSet.begin(), currentGrammarMultiSet.end(),
+            currentGrammarMultiTaskSet.begin(), currentGrammarMultiTaskSet.end(),
             *QRandomGenerator::global());
-        if (currentGrammarMultiSet.size() > TOTAL_TASKS_PER_EXERCISE) {
-            currentGrammarMultiSet.resize(TOTAL_TASKS_PER_EXERCISE);
+        if (currentGrammarMultiTaskSet.size() > TOTAL_TASKS_PER_EXERCISE) {
+            currentGrammarMultiTaskSet.resize(TOTAL_TASKS_PER_EXERCISE);
         }
-        tasksToLoad = currentGrammarMultiSet.size();
+        tasksToLoad = currentGrammarMultiTaskSet.size();
     }
 
     if (tasksToLoad == 0) {
-        QString typeStr;
-        if (type == ExerciseType::Translation) {
-            typeStr = "translation";
-        } else if (type == ExerciseType::GrammarSingle) {
-            typeStr = "single-choice grammar";
-        } else if (type == ExerciseType::GrammarMulti) {
-            typeStr = "multi-choice grammar";
-        }
-        QMessageBox::warning(
-            this, tr("No Tasks Loaded"),
-            tr("No %1 tasks could be prepared for this session. Please check data or difficulty.")
-                .arg(typeStr));
-        endExercise(false, "");
+        QMessageBox::warning(this, tr("No Tasks Loaded"), tr("No tasks could be prepared..."));
+        concludeExerciseSession(false, "");
         return;
     }
-    progressBar->setMaximum(tasksToLoad);
-    progressBar->setVisible(true);
-    timerLabel->setVisible(true);
-    timeRemaining = EXERCISE_TIME_SECONDS;
-    timerLabel->setText(QString::number(timeRemaining) + "s");
-    timerLabel->setStyleSheet("color: #e74c3c;");
-    exerciseTimer->start(1000);
+    taskProgressBar->setMaximum(tasksToLoad);
+    taskProgressBar->setVisible(true);
+    remainingTimeLabel->setVisible(true);
+    secondsRemainingInSession = EXERCISE_TIME_SECONDS;
+    remainingTimeLabel->setText(QString::number(secondsRemainingInSession) + "s");
+    remainingTimeLabel->setStyleSheet("color: #e74c3c;");
+    exerciseSessionTimer->start(1000);
 
-    translationButton->setEnabled(false);
-    grammarSingleButton->setEnabled(false);
-    grammarMultiButton->setEnabled(false);
-    stopExerciseButton->setVisible(true);
+    translationModeButton->setEnabled(false);
+    grammarSingleModeButton->setEnabled(false);
+    grammarMultiModeButton->setEnabled(false);
+    stopCurrentExerciseButton->setVisible(true);
 
-    nextTask();
+    presentNextTask();
 }
 
-void MainWindow::nextTask() {
+void MainWindow::presentNextTask() {
     QString taskMessage;
-    bool taskSet = false;
+    bool taskIsAvailable = false;
 
-    if (currentExerciseType == ExerciseType::Translation) {
-        if (currentTaskIndex < currentTranslationSet.size()) {
-            translationWidget->setTask(currentTranslationSet[currentTaskIndex]);
-            stackedWidget->setCurrentWidget(translationWidget);
-            taskMessage = tr("Translate this! Task %1 of %2")
-                              .arg(currentTaskIndex + 1)
-                              .arg(currentTranslationSet.size());
-            taskSet = true;
+    if (activeExerciseType == ExerciseType::Translation) {
+        if (currentTaskIndexInSet < currentTranslationTaskSet.size()) {
+            translationExerciseWidget->setTask(currentTranslationTaskSet[currentTaskIndexInSet]);
+            exerciseDisplayArea->setCurrentWidget(translationExerciseWidget);
+            taskMessage = tr("Translate: Task %1 of %2")
+                              .arg(currentTaskIndexInSet + 1)
+                              .arg(currentTranslationTaskSet.size());
+            taskIsAvailable = true;
         } else {
-            endExercise(true, tr("🎉 Translation set conquered! Well done!"));
+            concludeExerciseSession(true, tr("🎉 Translation set complete!"));
             return;
         }
-    } else if (currentExerciseType == ExerciseType::GrammarSingle) {
-        if (currentTaskIndex < currentGrammarSingleSet.size()) {
-            grammarSingleWidget->setTask(currentGrammarSingleSet[currentTaskIndex]);
-            stackedWidget->setCurrentWidget(grammarSingleWidget);
-            taskMessage = tr("Single Choice Grammar! Task %1 of %2")
-                              .arg(currentTaskIndex + 1)
-                              .arg(currentGrammarSingleSet.size());
-            taskSet = true;
+    } else if (activeExerciseType == ExerciseType::GrammarSingle) {
+        if (currentTaskIndexInSet < currentGrammarSingleTaskSet.size()) {
+            grammarSingleChoiceExerciseWidget->setTask(
+                currentGrammarSingleTaskSet[currentTaskIndexInSet]);
+            exerciseDisplayArea->setCurrentWidget(grammarSingleChoiceExerciseWidget);
+            taskMessage = tr("Grammar (Single): Task %1 of %2")
+                              .arg(currentTaskIndexInSet + 1)
+                              .arg(currentGrammarSingleTaskSet.size());
+            taskIsAvailable = true;
         } else {
-            endExercise(true, tr("🎉 Single-choice grammar set mastered! Excellent!"));
+            concludeExerciseSession(true, tr("🎉 Grammar (Single) set complete!"));
             return;
         }
-    } else if (currentExerciseType == ExerciseType::GrammarMulti) {
-        if (currentTaskIndex < currentGrammarMultiSet.size()) {
-            grammarMultiWidget->setTask(currentGrammarMultiSet[currentTaskIndex]);
-            stackedWidget->setCurrentWidget(grammarMultiWidget);
-            taskMessage = tr("Multi-Choice Challenge! Task %1 of %2")
-                              .arg(currentTaskIndex + 1)
-                              .arg(currentGrammarMultiSet.size());
-            taskSet = true;
+    } else if (activeExerciseType == ExerciseType::GrammarMulti) {
+        if (currentTaskIndexInSet < currentGrammarMultiTaskSet.size()) {
+            grammarMultiChoiceExerciseWidget->setTask(
+                currentGrammarMultiTaskSet[currentTaskIndexInSet]);
+            exerciseDisplayArea->setCurrentWidget(grammarMultiChoiceExerciseWidget);
+            taskMessage = tr("Grammar (Multi): Task %1 of %2")
+                              .arg(currentTaskIndexInSet + 1)
+                              .arg(currentGrammarMultiTaskSet.size());
+            taskIsAvailable = true;
         } else {
-            endExercise(true, tr("🎉 Multi-choice grammar set aced! Fantastic work!"));
+            concludeExerciseSession(true, tr("🎉 Grammar (Multi) set complete!"));
             return;
         }
     }
 
-    if (taskSet) {
-        statusLabel->setText(taskMessage);
-        statusLabel->setStyleSheet(
+    if (taskIsAvailable) {
+        userNotificationLabel->setText(taskMessage);
+        userNotificationLabel->setStyleSheet(
             "background-color: #eaf2f8; border-radius: 5px; padding: 5px; color: #34495e;");
     }
 }
 
 void MainWindow::handleTranslationSubmit() {
-    if (currentExerciseType != ExerciseType::Translation ||
-        currentTaskIndex >= currentTranslationSet.size()) {
+    if (activeExerciseType != ExerciseType::Translation ||
+        currentTaskIndexInSet >= currentTranslationTaskSet.size()) {
         return;
     }
-    QString userAnswer = translationWidget->getUserAnswer();
-    QString correctAnswer = currentTranslationSet[currentTaskIndex].correctAnswer;
+    QString userAnswer = translationExerciseWidget->getUserAnswer();
+    QString correctAnswer = currentTranslationTaskSet[currentTaskIndexInSet].correctAnswer;
 
-    int distance = levenshteinDistance(userAnswer, correctAnswer);
+    int distance = calculateLevenshteinDistance(userAnswer, correctAnswer);
     int shorterLength = qMin(userAnswer.trimmed().length(), correctAnswer.trimmed().length());
-    int tolerance =
-        (shorterLength > 0) ? static_cast<int>(shorterLength * LEVENSHTEIN_TOLERANCE_PERCENT) : 0;
+    int tolerance = (shorterLength > 0)
+                        ? static_cast<int>(shorterLength * LEVENSHTEIN_SIMILARITY_THRESHOLD)
+                        : 0;
     if (shorterLength <= 5 && tolerance == 0 && shorterLength > 0) {
         tolerance = 1;
     }
@@ -470,314 +475,247 @@ void MainWindow::handleTranslationSubmit() {
         distance = correctAnswer.trimmed().length();
     }
 
-    bool isCorrectByExactMatch =
-        (userAnswer.trimmed().toLower() == correctAnswer.trimmed().toLower());
-    bool isCorrectByLevenshtein = (!isCorrectByExactMatch && distance <= tolerance);
-    bool finalIsCorrect = isCorrectByExactMatch || isCorrectByLevenshtein;
+    bool isExactlyCorrect = (userAnswer.trimmed().toLower() == correctAnswer.trimmed().toLower());
+    bool isSimilarEnough = (!isExactlyCorrect && distance <= tolerance);
+    bool isFinalAnswerCorrect = isExactlyCorrect || isSimilarEnough;
 
-    if (finalIsCorrect) {
-        playSound(correctSound);
-        tasksCompleted++;
-        progressBar->setValue(tasksCompleted);
-        currentTaskIndex++;
-        if (isCorrectByExactMatch) {
-            statusLabel->setText(tr("🌟 Perfect! That's the spot on translation!"));
-        } else {
-            statusLabel->setText(
-                tr("👍 Close enough! The precise answer was: \"%1\"").arg(correctAnswer));
-        }
-        setFeedbackStyle(statusLabel, true);
-        QTimer::singleShot(1800, this, &MainWindow::nextTask);
+    if (isFinalAnswerCorrect) {
+        playSoundEffect(correctAnswerSound);
+        tasksCompletedInSet++;
+        taskProgressBar->setValue(tasksCompletedInSet);
+        currentTaskIndexInSet++;
+        userNotificationLabel->setText(
+            isExactlyCorrect ? tr("🌟 Perfect!")
+                             : tr("👍 Close! Expected: \"%1\"").arg(correctAnswer));
+        applyFeedbackStyleToLabel(userNotificationLabel, true);
+        QTimer::singleShot(1800, this, &MainWindow::presentNextTask);
     } else {
-        playSound(incorrectSound);
-        currentMistakes++;
-        statusLabel->setText(tr("🤔 Not quite. Try %1 of %2. The target was: \"%3\"")
-                                 .arg(currentMistakes)
-                                 .arg(MAX_MISTAKES_ALLOWED)
-                                 .arg(correctAnswer));
-        setFeedbackStyle(statusLabel, false);
-        translationWidget->clearAnswer();
-        if (currentMistakes >= MAX_MISTAKES_ALLOWED) {
+        playSoundEffect(incorrectAnswerSound);
+        mistakesMadeInSet++;
+        userNotificationLabel->setText(
+            tr("🤔 Not quite (Mistake %1/%2). Expected: \"%3\"")
+                .arg(mistakesMadeInSet)
+                .arg(MAX_MISTAKES_ALLOWED)
+                .arg(correctAnswer));
+        applyFeedbackStyleToLabel(userNotificationLabel, false);
+        translationExerciseWidget->clearAnswer();
+        if (mistakesMadeInSet >= MAX_MISTAKES_ALLOWED) {
             QTimer::singleShot(3000, this, [this]() {
-                endExercise(false, tr("Too many attempts. Let's try a new set later!"));
+                concludeExerciseSession(false, tr("Too many mistakes in this set."));
             });
         }
     }
 }
 
 void MainWindow::handleGrammarSingleSubmit() {
-    if (currentExerciseType != ExerciseType::GrammarSingle ||
-        currentTaskIndex >= currentGrammarSingleSet.size()) {
+    if (activeExerciseType != ExerciseType::GrammarSingle ||
+        currentTaskIndexInSet >= currentGrammarSingleTaskSet.size()) {
         return;
     }
-    int userAnswerIndex = grammarSingleWidget->getSelectedOption();
-    int correctAnswerIndex = currentGrammarSingleSet[currentTaskIndex].correctOptionIndex;
+    int userAnswerIndex = grammarSingleChoiceExerciseWidget->getSelectedOption();
+    int correctAnswerIndex = currentGrammarSingleTaskSet[currentTaskIndexInSet].correctOptionIndex;
 
     if (userAnswerIndex == -1) {
-        statusLabel->setText(tr("⚠️ Please select an option before submitting!"));
-        setFeedbackStyle(statusLabel, false);
+        userNotificationLabel->setText(tr("⚠️ Please select an option!"));
+        applyFeedbackStyleToLabel(userNotificationLabel, false);
         return;
     }
-
     if (userAnswerIndex == correctAnswerIndex) {
-        playSound(correctSound);
-        tasksCompleted++;
-        progressBar->setValue(tasksCompleted);
-        currentTaskIndex++;
-        statusLabel->setText(tr("🏆 Correct! Excellent choice."));
-        setFeedbackStyle(statusLabel, true);
-        QTimer::singleShot(1500, this, &MainWindow::nextTask);
+        playSoundEffect(correctAnswerSound);
+        tasksCompletedInSet++;
+        taskProgressBar->setValue(tasksCompletedInSet);
+        currentTaskIndexInSet++;
+        userNotificationLabel->setText(tr("🏆 Correct!"));
+        applyFeedbackStyleToLabel(userNotificationLabel, true);
+        QTimer::singleShot(1500, this, &MainWindow::presentNextTask);
     } else {
-        playSound(incorrectSound);
-        currentMistakes++;
-        statusLabel->setText(tr("❌ Oops! That wasn't it. Attempt %1 of %2.")
-                                 .arg(currentMistakes)
-                                 .arg(MAX_MISTAKES_ALLOWED));
-        setFeedbackStyle(statusLabel, false);
-        if (currentMistakes >= MAX_MISTAKES_ALLOWED) {
-            grammarSingleWidget->showCorrectAnswer(correctAnswerIndex);
+        playSoundEffect(incorrectAnswerSound);
+        mistakesMadeInSet++;
+        userNotificationLabel->setText(
+            tr("❌ Incorrect (Mistake %1/%2).").arg(mistakesMadeInSet).arg(MAX_MISTAKES_ALLOWED));
+        applyFeedbackStyleToLabel(userNotificationLabel, false);
+        if (mistakesMadeInSet >= MAX_MISTAKES_ALLOWED) {
+            grammarSingleChoiceExerciseWidget->showCorrectAnswer(correctAnswerIndex);
             QTimer::singleShot(2500, this, [this]() {
-                endExercise(false, tr("Max attempts reached. Time for a new challenge!"));
+                concludeExerciseSession(false, tr("Max mistakes reached."));
             });
         }
     }
 }
 
 void MainWindow::handleGrammarMultiSubmit() {
-    if (currentExerciseType != ExerciseType::GrammarMulti ||
-        currentTaskIndex >= currentGrammarMultiSet.size()) {
+    if (activeExerciseType != ExerciseType::GrammarMulti ||
+        currentTaskIndexInSet >= currentGrammarMultiTaskSet.size()) {
         return;
     }
-    QSet<int> userAnswerIndices = grammarMultiWidget->getSelectedIndices();
+    QSet<int> userAnswerIndices = grammarMultiChoiceExerciseWidget->getSelectedIndices();
     const QSet<int>& correctAnswerIndices =
-        currentGrammarMultiSet[currentTaskIndex].correctOptionIndices;
+        currentGrammarMultiTaskSet[currentTaskIndexInSet].correctOptionIndices;
 
     if (userAnswerIndices.isEmpty()) {
-        statusLabel->setText(tr("⚠️ Please select at least one option!"));
-        setFeedbackStyle(statusLabel, false);
+        userNotificationLabel->setText(tr("⚠️ Please select at least one option!"));
+        applyFeedbackStyleToLabel(userNotificationLabel, false);
         return;
     }
-
     if (userAnswerIndices == correctAnswerIndices) {
-        playSound(correctSound);
-        tasksCompleted++;
-        progressBar->setValue(tasksCompleted);
-        currentTaskIndex++;
-        statusLabel->setText(tr("🎉 All correct! You nailed it!"));
-        setFeedbackStyle(statusLabel, true);
-        QTimer::singleShot(1800, this, &MainWindow::nextTask);
+        playSoundEffect(correctAnswerSound);
+        tasksCompletedInSet++;
+        taskProgressBar->setValue(tasksCompletedInSet);
+        currentTaskIndexInSet++;
+        userNotificationLabel->setText(tr("🎉 All correct!"));
+        applyFeedbackStyleToLabel(userNotificationLabel, true);
+        QTimer::singleShot(1800, this, &MainWindow::presentNextTask);
     } else {
-        playSound(incorrectSound);
-        currentMistakes++;
-        statusLabel->setText(tr("🧐 Almost! Not all selections were correct. Attempt %1 of %2.")
-                                 .arg(currentMistakes)
-                                 .arg(MAX_MISTAKES_ALLOWED));
-        setFeedbackStyle(statusLabel, false);
-        if (currentMistakes >= MAX_MISTAKES_ALLOWED) {
-            grammarMultiWidget->showCorrectAnswers(
-                correctAnswerIndices, currentGrammarMultiSet[currentTaskIndex].options);
+        playSoundEffect(incorrectAnswerSound);
+        mistakesMadeInSet++;
+        userNotificationLabel->setText(tr("🧐 Some selections were off (Mistake %1/%2).")
+                                           .arg(mistakesMadeInSet)
+                                           .arg(MAX_MISTAKES_ALLOWED));
+        applyFeedbackStyleToLabel(userNotificationLabel, false);
+        if (mistakesMadeInSet >= MAX_MISTAKES_ALLOWED) {
+            grammarMultiChoiceExerciseWidget->showCorrectAnswers(
+                correctAnswerIndices, currentGrammarMultiTaskSet[currentTaskIndexInSet].options);
             QTimer::singleShot(3500, this, [this]() {
-                endExercise(false, tr("Many tries on this one. Let's move on!"));
+                concludeExerciseSession(false, tr("Max mistakes on multi-choice."));
             });
         }
     }
 }
 
 void MainWindow::onMeditateButtonClicked() {
-    if (!meditateSound) {
+    if (!meditationAudio) {
         return;
     }
-
-    if (meditateButton->isChecked()) {
-        playSound(meditateSound, true);
-        meditateButton->setText(tr("🧘 Stop Meditating"));
-        meditateButton->setStyleSheet(
-            "QPushButton { background-color: #16a085; color: white; border: none; padding: 10px; "
-            "border-radius: 5px; min-width: 120px; font-weight: bold;}"
-            "QPushButton:hover { background-color: #1abc9c; }"
-
-        );
+    if (meditationToggleButton->isChecked()) {
+        playSoundEffect(meditationAudio, true);
+        meditationToggleButton->setText(tr("🧘 Stop Meditating"));
+        meditationToggleButton->setStyleSheet("QPushButton { background-color: #16a085; ... }");
     } else {
-        if (meditateSound->isPlaying()) {
-            meditateSound->stop();
+        if (meditationAudio->isPlaying()) {
+            meditationAudio->stop();
         }
-        meditateButton->setText(tr("🧘 Meditate"));
-        meditateButton->setStyleSheet(
-            "QPushButton { background-color: #1abc9c; color: white; border: none; padding: 10px; "
-            "border-radius: 5px; min-width: 120px; font-weight: bold;}"
-            "QPushButton:hover { background-color: #16a085; }");
+        meditationToggleButton->setText(tr("🧘 Meditate"));
+        meditationToggleButton->setStyleSheet("QPushButton { background-color: #1abc9c; ... }");
     }
 }
 
 void MainWindow::stopCurrentExercise() {
-    if (currentExerciseType != ExerciseType::None) {
-        QMessageBox::StandardButton reply;
-        reply = QMessageBox::question(
-            this, tr("Stop Exercise"),
-            tr("Are you sure you want to stop the current exercise?\nYour progress in this set "
-               "will be lost."),
-            QMessageBox::Yes | QMessageBox::No);
-        if (reply == QMessageBox::Yes) {
-            endExercise(false, tr("Exercise stopped by user. Back to the main hub!"));
+    if (activeExerciseType != ExerciseType::None) {
+        if (QMessageBox::question(
+                this, tr("Stop Exercise"), tr("Stop current exercise? Progress will be lost."),
+                QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes) {
+            concludeExerciseSession(false, tr("Exercise stopped by user."));
         }
     }
 }
 
 void MainWindow::updateTimer() {
-    timeRemaining--;
-    timerLabel->setText(QString::number(timeRemaining) + "s");
-    if (timeRemaining <= 5 && timeRemaining > 0) {
-        timerLabel->setStyleSheet("color: #d35400; font-weight: bold;");
-    } else if (timeRemaining == 0) {
-        timerLabel->setStyleSheet("color: #c0392b; font-weight: bold;");
+    secondsRemainingInSession--;
+    remainingTimeLabel->setText(QString::number(secondsRemainingInSession) + "s");
+    if (secondsRemainingInSession <= 5 && secondsRemainingInSession > 0) {
+        remainingTimeLabel->setStyleSheet("color: #d35400; font-weight: bold;");
+    } else if (secondsRemainingInSession == 0) {
+        remainingTimeLabel->setStyleSheet("color: #c0392b; font-weight: bold;");
     }
-
-    if (timeRemaining <= 0) {
-        exerciseTimer->stop();
+    if (secondsRemainingInSession <= 0) {
+        exerciseSessionTimer->stop();
         exerciseTimeUp();
     }
 }
 
 void MainWindow::exerciseTimeUp() {
-    playSound(timeUpSound);
-
-    endExercise(false, tr("⏰ Time's up! Let's try that again when you're ready."));
+    playSoundEffect(timerExpiredSound);
+    concludeExerciseSession(false, tr("⏰ Time's up!"));
 }
 
-void MainWindow::endExercise(bool success, const QString& message) {
-    exerciseTimer->stop();
-
-    if (meditateSound && meditateSound->isPlaying()) {
-        meditateSound->stop();
-        meditateButton->setChecked(false);
-        meditateButton->setText(tr("🧘 Meditate"));
-        meditateButton->setStyleSheet(
-            "QPushButton { background-color: #1abc9c; color: white; border: none; padding: 10px; "
-            "border-radius: 5px; min-width: 120px; font-weight: bold;}"
-            "QPushButton:hover { background-color: #16a085; }");
+void MainWindow::concludeExerciseSession(bool wasSuccessful, const QString& conclusionMessage) {
+    exerciseSessionTimer->stop();
+    if (meditationAudio && meditationAudio->isPlaying()) {
+        meditationAudio->stop();
+        meditationToggleButton->setChecked(false);
+        meditationToggleButton->setText(tr("🧘 Meditate"));
+        meditationToggleButton->setStyleSheet("QPushButton { background-color: #1abc9c; ... }");
     }
 
-    ExerciseType endedExerciseType = currentExerciseType;
-    currentExerciseType = ExerciseType::None;
-    stackedWidget->setCurrentWidget(welcomeLabel);
+    ExerciseType endedType = activeExerciseType;
+    activeExerciseType = ExerciseType::None;
+    exerciseDisplayArea->setCurrentWidget(welcomeMessageLabel);
 
-    bool awardedPoints = false;
-    if (success) {
-        bool allTasksInSetDone = false;
-        if (endedExerciseType == ExerciseType::Translation && !currentTranslationSet.isEmpty()) {
-            allTasksInSetDone = (tasksCompleted >= currentTranslationSet.size());
+    bool earnedPoints = false;
+    if (wasSuccessful) {
+        bool allTasksDone = false;
+        if (endedType == ExerciseType::Translation && !currentTranslationTaskSet.isEmpty()) {
+            allTasksDone = (tasksCompletedInSet >= currentTranslationTaskSet.size());
         } else if (
-            endedExerciseType == ExerciseType::GrammarSingle &&
-            !currentGrammarSingleSet.isEmpty()) {
-            allTasksInSetDone = (tasksCompleted >= currentGrammarSingleSet.size());
+            endedType == ExerciseType::GrammarSingle && !currentGrammarSingleTaskSet.isEmpty()) {
+            allTasksDone = (tasksCompletedInSet >= currentGrammarSingleTaskSet.size());
         } else if (
-            endedExerciseType == ExerciseType::GrammarMulti && !currentGrammarMultiSet.isEmpty()) {
-            allTasksInSetDone = (tasksCompleted >= currentGrammarMultiSet.size());
+            endedType == ExerciseType::GrammarMulti && !currentGrammarMultiTaskSet.isEmpty()) {
+            allTasksDone = (tasksCompletedInSet >= currentGrammarMultiTaskSet.size());
         }
 
-        if (allTasksInSetDone && currentMistakes < MAX_MISTAKES_ALLOWED) {
-            totalScore += 10;
-            awardedPoints = true;
+        if (allTasksDone && mistakesMadeInSet < MAX_MISTAKES_ALLOWED) {
+            totalPlayerScore += 10;
+            earnedPoints = true;
         }
     }
 
-    if (!message.isEmpty()) {
-        statusLabel->setText(message);
-        setFeedbackStyle(statusLabel, success && awardedPoints);
-        QString fullMessage = message;
-        if (awardedPoints) {
-            fullMessage += tr("\n\n✨ You earned 10 points! Keep it up! ✨");
+    if (!conclusionMessage.isEmpty()) {
+        userNotificationLabel->setText(conclusionMessage);
+        applyFeedbackStyleToLabel(userNotificationLabel, wasSuccessful && earnedPoints);
+        QString fullPopupMessage = conclusionMessage;
+        if (earnedPoints) {
+            fullPopupMessage += tr("\n\n✨ You earned 10 points! ✨");
         }
         QMessageBox::information(
-            this, success ? tr("Session Complete!") : tr("Session Ended"), fullMessage);
+            this, wasSuccessful ? tr("Session Complete!") : tr("Session Ended"), fullPopupMessage);
     }
 
-    updateScoreDisplay();
-    resetExerciseState();
+    updatePlayerScoreDisplay();
+    resetApplicationToIdleState();
 
-    translationButton->setEnabled(true);
-    grammarSingleButton->setEnabled(true);
-    grammarMultiButton->setEnabled(true);
-    stopExerciseButton->setVisible(false);
-    meditateButton->setEnabled(true);
+    translationModeButton->setEnabled(true);
+    grammarSingleModeButton->setEnabled(true);
+    grammarMultiModeButton->setEnabled(true);
+    stopCurrentExerciseButton->setVisible(false);
+    meditationToggleButton->setEnabled(true);
 }
 
-void MainWindow::updateScoreDisplay() {
-    scoreLabel->setText(QString::number(totalScore));
+void MainWindow::updatePlayerScoreDisplay() {
+    currentScoreLabel->setText(QString::number(totalPlayerScore));
 }
 
-void MainWindow::resetExerciseState() {
-    tasksCompleted = 0;
-    currentMistakes = 0;
-    currentTaskIndex = 0;
-    progressBar->setValue(0);
-    progressBar->setMaximum(TOTAL_TASKS_PER_EXERCISE);
-    timerLabel->setText(QString::number(EXERCISE_TIME_SECONDS) + "s");
-    timerLabel->setStyleSheet("color: #e74c3c;");
+void MainWindow::resetApplicationToIdleState() {
+    tasksCompletedInSet = 0;
+    mistakesMadeInSet = 0;
+    currentTaskIndexInSet = 0;
+    taskProgressBar->setValue(0);
+    taskProgressBar->setMaximum(TOTAL_TASKS_PER_EXERCISE);
+    remainingTimeLabel->setText(QString::number(EXERCISE_TIME_SECONDS) + "s");
+    remainingTimeLabel->setStyleSheet("color: #e74c3c;");
 
-    currentTranslationSet.clear();
-    currentGrammarSingleSet.clear();
-    currentGrammarMultiSet.clear();
+    currentTranslationTaskSet.clear();
+    currentGrammarSingleTaskSet.clear();
+    currentGrammarMultiTaskSet.clear();
 
-    progressBar->setVisible(false);
-    timerLabel->setVisible(false);
-    stopExerciseButton->setVisible(false);
+    taskProgressBar->setVisible(false);
+    remainingTimeLabel->setVisible(false);
+    stopCurrentExerciseButton->setVisible(false);
 
-    if (translationWidget) {
-        translationWidget->clearAnswer();
+    if (translationExerciseWidget) {
+        translationExerciseWidget->clearAnswer();
     }
-    if (grammarMultiWidget) {
-        grammarMultiWidget->clearSelection();
+    if (grammarMultiChoiceExerciseWidget) {
+        grammarMultiChoiceExerciseWidget->clearSelection();
     }
 
-    if (stackedWidget->currentWidget() != welcomeLabel &&
-        currentExerciseType == ExerciseType::None) {
-        stackedWidget->setCurrentWidget(welcomeLabel);
+    if (exerciseDisplayArea->currentWidget() != welcomeMessageLabel &&
+        activeExerciseType == ExerciseType::None) {
+        exerciseDisplayArea->setCurrentWidget(welcomeMessageLabel);
     }
-    if (currentExerciseType == ExerciseType::None) {
-        statusLabel->setText(tr("Status: Ready for your next learning quest!"));
-        statusLabel->setStyleSheet(
+    if (activeExerciseType == ExerciseType::None) {
+        userNotificationLabel->setText(tr("Status: Ready for your next learning quest!"));
+        userNotificationLabel->setStyleSheet(
             "background-color: #eaf2f8; border-radius: 5px; padding: 5px; color: #34495e;");
     }
-}
-
-QString MainWindow::getCurrentHelpText() const {
-    if (currentExerciseType == ExerciseType::Translation &&
-        currentTaskIndex < currentTranslationSet.size()) {
-        return currentTranslationSet[currentTaskIndex].helpText;
-    } else if (
-        currentExerciseType == ExerciseType::GrammarSingle &&
-        currentTaskIndex < currentGrammarSingleSet.size()) {
-        return currentGrammarSingleSet[currentTaskIndex].helpText;
-    } else if (
-        currentExerciseType == ExerciseType::GrammarMulti &&
-        currentTaskIndex < currentGrammarMultiSet.size()) {
-        return currentGrammarMultiSet[currentTaskIndex].helpText;
-    }
-    return tr(
-        "General Help: Select an exercise type to begin. Use 'Settings' to change difficulty. "
-        "Press 'H' for specific task help if available during an exercise.");
-}
-
-void MainWindow::showHelp() {
-    QString helpText = getCurrentHelpText();
-    if (helpText.startsWith("General Help:") || (currentExerciseType == ExerciseType::None &&
-                                                 stackedWidget->currentWidget() == welcomeLabel)) {
-        helpText =
-            tr("Welcome to LinguaLearn Quest!\n\n"
-               "How to Play:\n"
-               "- Pick an exercise: Translation, Single-Choice Grammar, or Multi-Choice Grammar.\n"
-               "- Use the 'Settings' menu to adjust the difficulty level.\n"
-               "- Your progress through %1 tasks is shown by the progress bar.\n"
-               "- You have %2 seconds for each set of tasks.\n"
-               "- Be careful! %3 mistakes will end the current exercise set.\n"
-               "- You can stop an ongoing exercise using the 'Stop Exercise' button.\n"
-               "- Need a break? Click the 'Meditate' button for some calming sounds. You can "
-               "meditate even during an exercise!\n"
-               "- Press 'H' or use the Help Menu for hints on the current task (if available).")
-                .arg(TOTAL_TASKS_PER_EXERCISE)
-                .arg(EXERCISE_TIME_SECONDS)
-                .arg(MAX_MISTAKES_ALLOWED);
-    }
-    QMessageBox::information(this, tr("LinguaLearn Quest - Help"), helpText);
 }
